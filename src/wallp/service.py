@@ -4,7 +4,7 @@ from . import log
 from .paths import LOG_FILE
 
 UNIT = "wallp-daemon.service"
-INSTALLER = "~/dev/Verity/wallp/install.sh"
+INSTALLER = "~/dev/wallp/wallp-plasma/install.sh  # daemon migrado para wallp-plasma (canônico), fallback: ~/dev/wallp/wallp-cli/install.sh"
 
 
 def _start_service():

@@ -19,11 +19,41 @@ def main():
         return
 
     if opts["daemon"]:
+        # daemon migrado para wallp-plasma (canônico). Delega se instalado, senão fallback local.
+        import os
+        from pathlib import Path
+
+        plasma_cands = [
+            Path.home() / "dev/wallp/wallp-plasma/bin/wallp-plasma-daemon",
+            Path.home() / ".local/bin/wallp-plasma-daemon",
+            Path("/usr/local/bin/wallp-plasma-daemon"),
+            Path("/usr/bin/wallp-plasma-daemon"),
+        ]
+        for cand in plasma_cands:
+            if cand.is_file() and os.access(cand, os.X_OK):
+                os.execv(str(cand), [str(cand)] + sys.argv[1:])
+        # fallback: roda daemon local (legado) se wallp-plasma não instalado
         daemon_run()
+        return
+
+    if opts.get("profile"):
+        from .mode_profile import _profile_mode
+        _profile_mode(opts)
+        return
+
+    # ps sozinho (sem outro modo principal) → mostra só atual/próximos e sai
+    # ps combinado com -c/-r/-a continua e será exibido após executar o comando
+    has_main = opts["random"] or opts["auto"] or opts["stop"] or opts["change"] or opts["next"] or opts["list"] or opts["daemon"] or opts["init"]
+    if opts.get("ps") and not has_main:
+        from .mode_ps import _ps_mode
+        _ps_mode(opts)
         return
 
     if opts["list"]:
         _list_mode(opts)
+        if opts.get("ps"):
+            from .mode_ps import _ps_mode
+            _ps_mode(opts)
         return
 
     if opts["random"]:
@@ -59,6 +89,9 @@ def main():
 
     if opts["log"]:
         _show_log(opts, follow=True)
+    if opts.get("ps"):
+        from .mode_ps import _ps_mode
+        _ps_mode(opts)
 
 
 def _list_mode(opts):

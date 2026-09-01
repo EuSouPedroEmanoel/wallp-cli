@@ -1,11 +1,21 @@
 import json
 from pathlib import Path
 
-PLUGIN_VIDEO = "luisbocanegra.smart.video.wallpaper.reborn"
-PLUGIN_IMAGE = "org.kde.image"
+PLUGIN = "com.wallp.wallpaper"  # wallp unificado imagem+vídeo (KDE Plasma 6)
+PLUGIN_VIDEO = PLUGIN
+PLUGIN_IMAGE = PLUGIN  # unifica: mesmo plasmóide resolve por extensão
+# legado para fallback se novo plasmóide não estiver instalado
+PLUGIN_VIDEO_LEGACY = "luisbocanegra.smart.video.wallpaper.reborn"
+PLUGIN_IMAGE_LEGACY = "org.kde.image"
 
 VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v", ".mpeg", ".mpg", ".ogg", ".ogv"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".avif"}
+
+
+def _is_wallp_plugin_installed():
+    p1 = Path.home() / ".local/share/plasma/wallpapers" / PLUGIN
+    p2 = Path("/usr/share/plasma/wallpapers") / PLUGIN
+    return p1.is_dir() or p2.is_dir()
 
 
 def _iface():
@@ -29,10 +39,13 @@ def _screens(iface):
 
 
 def plugin_for(path):
+    # wallp unificado: sempre PLUGIN; fallback só se novo não estiver instalado
+    if _is_wallp_plugin_installed():
+        return PLUGIN
     ext = Path(path).suffix.lower()
     if ext in VIDEO_EXTS:
-        return PLUGIN_VIDEO
-    return PLUGIN_IMAGE
+        return PLUGIN_VIDEO_LEGACY
+    return PLUGIN_IMAGE_LEGACY
 
 
 def _video_params(uri, loop=False, som=False, integro=False):
@@ -52,6 +65,9 @@ def _video_params(uri, loop=False, som=False, integro=False):
         "ResumeLastVideo": True,
         "MuteMode": 4 if som else 5,
         "Volume": 1.0,
+        # wallp unificado: Source é preferido, VideoUrls/Image mantidos para compat
+        "Source": uri,
+        "Loop": bool(loop),
     }
     if integro:
         params["ChangeWallpaperMode"] = 1
@@ -66,7 +82,15 @@ def apply(path, screen=None, loop=False, som=False, integro=False):
         raise FileNotFoundError(f"arquivo não encontrado: {p}")
     uri = p.as_uri()
     plugin = plugin_for(p)
-    if plugin == PLUGIN_VIDEO:
+    # unificado wallp: manda Source + compat Image/VideoUrls para o mesmo plugin
+    if plugin == PLUGIN:
+        is_video = p.suffix.lower() in VIDEO_EXTS
+        if is_video:
+            params = _video_params(uri, loop=loop, som=som, integro=integro)
+            params["Image"] = uri  # compat fallback se QML ler Image
+        else:
+            params = {"Source": uri, "Image": uri, "VideoUrls": "[]", "Loop": bool(loop), "MuteMode": 4 if som else 5, "Volume": 1.0}
+    elif plugin == PLUGIN_VIDEO_LEGACY:
         params = _video_params(uri, loop=loop, som=som, integro=integro)
     else:
         params = {"Image": uri}
