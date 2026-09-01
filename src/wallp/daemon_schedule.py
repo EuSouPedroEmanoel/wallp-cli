@@ -1,9 +1,59 @@
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
-from . import apply, entries, log, media, schedule, state, transitions, yt
+from . import apply, entries, log, media, schedule, state, transitions, yt, yt_prefetch
 
 POLL = 15
+
+
+def _get_yt_or_prefetch(url, prev_path=None):
+    """Tenta pegar do prefetch, senão baixa com fallback best->worst. Limpa prev_path antes se N tocando."""
+    if not url:
+        return url
+    # tenta prefetch
+    pref = yt_prefetch.get_result(url)
+    if pref and Path(pref).exists():
+        return pref
+    # fallback sync com prev_path (caller garante N tocando)
+    try:
+        return yt.download_yt(url, prev_path=prev_path)
+    except Exception:
+        # tenta sem prev_path se falhou
+        return yt.download_yt(url)
+
+
+def _prefetch_next_for_schedule(entries_list, active, prev_path):
+    """Calcula próximo YT URL da agenda e dispara prefetch."""
+    try:
+        nxt = transitions.next_entry(entries_list, active, datetime.now()) if active else None
+        if nxt and nxt.get("is_yt") and nxt.get("arquivo"):
+            # só prefetch se N ainda toca (verifica arquivo de active existe)
+            cur_path = active.get("arquivo") if active else None
+            if cur_path and Path(cur_path).exists() or (active and active.get("is_yt") and yt._is_in_yt_dir(cur_path or "")):
+                # na verdade verifica se current N ainda está tocando: arquivo de N existe ou é YT em yt_dir
+                # simplifica: se active ainda é o resolvido, assume tocando
+                yt_prefetch.prefetch(nxt["arquivo"], prev_path=prev_path)
+        elif nxt and nxt.get("is_yt_list"):
+            # para yta, prefetch próximo id da playlist
+            url = nxt.get("arquivo")
+            if url and "list=" in url.lower():
+                try:
+                    ids = yt.get_playlist_ids(url)
+                    if ids:
+                        # escolhe próximo id baseado em pos
+                        pos_key = f"yta:{nxt['nome']}:{url}"
+                        pos = state.get_pos()
+                        yta_pos = pos if pos and isinstance(pos, dict) and pos.get("dir") == pos_key else None
+                        idx = int(yta_pos.get("idx", 0)) % len(ids) if yta_pos else 0
+                        # N+1 é idx, já que idx aponta para próximo a tocar
+                        shuffled = media.day_shuffled(ids, media.get_salt()) if nxt.get("shuffled") else ids
+                        next_id = shuffled[idx % len(shuffled)]
+                        yt_prefetch.prefetch(f"https://youtu.be/{next_id}", prev_path=prev_path)
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
 
 def _run_schedule():
@@ -27,6 +77,8 @@ def _run_schedule():
     last_applied = None
     integro_key = None
     integro_advance = None
+    prev_yt_path = None
+    current_yt_path = None
 
     while True:
         if not state.is_on():
@@ -71,7 +123,7 @@ def _run_schedule():
                     try:
                         path_for_apply = active["arquivo"]
                         if active.get("is_yt"):
-                            path_for_apply = yt.download_yt(path_for_apply)
+                            path_for_apply = _get_yt_or_prefetch(path_for_apply, prev_path=prev_yt_path)
                         plugin, path = apply.apply(
                             path_for_apply,
                             loop=bool(active.get("repetir") or active.get("loop")),
@@ -79,6 +131,17 @@ def _run_schedule():
                         )
                         log.err(f"aplicando: {entries.format_entry(active)} ({plugin})")
                         last_applied = (active["arquivo"], active["nome"], active.get("file_index", 0))
+                        # atualiza N e N-1 para prefetch
+                        if active.get("is_yt") and yt._is_in_yt_dir(path_for_apply):
+                            if current_yt_path and current_yt_path != path_for_apply:
+                                prev_yt_path = current_yt_path
+                            current_yt_path = path_for_apply
+                        else:
+                            # para não-YT, mantém tracking mas não limpa
+                            if current_yt_path:
+                                prev_yt_path = current_yt_path
+                            current_yt_path = None
+                        _prefetch_next_for_schedule(entries_list, active, prev_yt_path)
                     except Exception as e:
                         log.err(f"erro ao aplicar {active.get('arquivo')}: {e}")
                         last_applied = None
@@ -121,15 +184,21 @@ def _run_schedule():
                             if cached:
                                 chosen = str(cached[0])
                             else:
-                                chosen = yt.download_yt(video_url)
+                                chosen = _get_yt_or_prefetch(video_url, prev_path=prev_yt_path)
                         except Exception:
-                            chosen = yt.download_yt(video_url)
+                            chosen = _get_yt_or_prefetch(video_url, prev_path=prev_yt_path)
                         key = (str(chosen), active["nome"], chosen_id)
                         if key != last_applied:
                             try:
                                 plugin, _ = apply.apply(str(chosen), loop=bool(active.get("repetir") or active.get("loop")), som=active.get("som"), integro=bool(active.get("integro")))
                                 log.err(f"aplicando: {entries.format_entry(active)} [1/1] {chosen_id} ({plugin})")
                                 last_applied = key
+                                # tracking YT para limpeza N-1 antes de N+1
+                                if yt._is_in_yt_dir(chosen):
+                                    if current_yt_path and current_yt_path != chosen:
+                                        prev_yt_path = current_yt_path
+                                    current_yt_path = chosen
+                                # prefetch não se aplica aqui (single id)
                             except Exception as e:
                                 log.err(f"erro ao aplicar {chosen}: {e}")
                                 last_applied = None
@@ -165,18 +234,28 @@ def _run_schedule():
                                 playlist_id = yt._extract_playlist_id(url) or "playlist"
                                 cached = list((yt.yt_dir() / playlist_id).glob(f"{chosen_id}.*"))
                                 if not cached:
-                                    single_path = yt.download_yt(video_url)
+                                    single_path = _get_yt_or_prefetch(video_url, prev_path=prev_yt_path)
                                     chosen = single_path
                                 else:
                                     chosen = str(cached[0])
                             except Exception:
-                                chosen = yt.download_yt(video_url)
+                                chosen = _get_yt_or_prefetch(video_url, prev_path=prev_yt_path)
                             key = (str(chosen), active["nome"], idx)
                             if key != last_applied:
                                 try:
                                     plugin, _ = apply.apply(str(chosen), loop=bool(active.get("repetir") or is_loop_true), som=active.get("som"), integro=bool(active.get("integro")))
                                     log.err(f"aplicando: {entries.format_entry(active)} [{idx+1}/{len(shuffled_ids)}] {chosen_id} ({plugin})")
                                     last_applied = key
+                                    if yt._is_in_yt_dir(chosen):
+                                        if current_yt_path and current_yt_path != chosen:
+                                            prev_yt_path = current_yt_path
+                                        current_yt_path = chosen
+                                    # prefetch próximo id da mesma playlist
+                                    try:
+                                        nxt_id = shuffled_ids[(idx + 1) % len(shuffled_ids)]
+                                        yt_prefetch.prefetch(f"https://youtu.be/{nxt_id}", prev_path=prev_yt_path)
+                                    except Exception:
+                                        pass
                                 except Exception as e:
                                     log.err(f"erro ao aplicar {chosen}: {e}")
                                     last_applied = None
@@ -226,7 +305,7 @@ def _run_schedule():
                     yt_playlist_handled = True
             if active.get("is_yt") and not yt_playlist_handled:
                 try:
-                    dl_path = yt.download_yt(active["arquivo"])
+                    dl_path = _get_yt_or_prefetch(active["arquivo"], prev_path=prev_yt_path)
                     path = dl_path
                     key = (path, active["nome"], active.get("file_index", 0))
                     if key != last_applied:
@@ -239,6 +318,11 @@ def _run_schedule():
                             )
                             log.err(f"aplicando: {entries.format_entry(active)} ({plugin})")
                             last_applied = key
+                            if yt._is_in_yt_dir(path):
+                                if current_yt_path and current_yt_path != path:
+                                    prev_yt_path = current_yt_path
+                                current_yt_path = path
+                            _prefetch_next_for_schedule(entries_list, active, prev_yt_path)
                         except Exception as e:
                             log.err(f"erro ao aplicar {active['arquivo']}: {e}")
                             last_applied = None
@@ -251,7 +335,7 @@ def _run_schedule():
                     try:
                         path = active["arquivo"]
                         if active.get("is_yt"):
-                            path = yt.download_yt(path)
+                            path = _get_yt_or_prefetch(path, prev_path=prev_yt_path)
                         plugin, path = apply.apply(
                             path,
                             loop=bool(active.get("repetir") or active.get("loop")),
@@ -260,6 +344,15 @@ def _run_schedule():
                         )
                         log.err(f"aplicando: {entries.format_entry(active)} ({plugin})")
                         last_applied = key
+                        try:
+                            p = path if 'path' in locals() else active.get("arquivo")
+                            if p and yt._is_in_yt_dir(str(p)):
+                                if current_yt_path and current_yt_path != str(p):
+                                    prev_yt_path = current_yt_path
+                                current_yt_path = str(p)
+                            _prefetch_next_for_schedule(entries_list, active, prev_yt_path)
+                        except Exception:
+                            pass
                     except Exception as e:
                         log.err(f"erro ao aplicar {active['arquivo']}: {e}")
                         last_applied = None

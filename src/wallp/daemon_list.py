@@ -1,12 +1,27 @@
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
-
-from . import apply, entries, log, media, parse, randomcfg, schedule, state, transitions, yt
-
+from . import apply, entries, log, media, parse, randomcfg, schedule, state, transitions, yt, yt_prefetch
 POLL = 15
-
-
+def _get_yt_or_prefetch(url, prev_path=None):
+    if not url or "youtu" not in url.lower():
+        return url
+    pref = yt_prefetch.get_result(url)
+    if pref and Path(pref).exists():
+        return pref
+    return yt.download_yt(url, prev_path=prev_path)
+def _track_prefetch(new_path, prev_path, current_path, subs, idx):
+    if new_path and yt._is_in_yt_dir(str(new_path)):
+        if current_path and current_path != str(new_path):
+            prev_path = current_path
+        current_path = str(new_path)
+        try:
+            nxt = subs[(idx+1) % len(subs)] if subs else None
+            if nxt and nxt.get("is_yt") and nxt.get("arquivo"):
+                yt_prefetch.prefetch(nxt["arquivo"], prev_path=prev_path)
+        except:
+            pass
+    return prev_path, current_path
 def _list_should_stop():
     if not state.is_on():
         log.err("modo automático desativado, encerrando.")
@@ -16,8 +31,6 @@ def _list_should_stop():
         log.err("modo lista encerrado, voltando à agenda.")
         return True
     return False
-
-
 def _run_list():
     while True:
         cfg = state.get_list()
@@ -34,7 +47,6 @@ def _run_list():
         log.err("nenhum wallpaper no yml, encerrando.")
         import sys
         sys.exit(0)
-
     lista = entries.find_list(cfg["nome"])
     if lista is not None:
         subs = lista["sub_entries"]
@@ -45,20 +57,14 @@ def _run_list():
             import sys
             sys.exit(0)
         subs = [e]
-
     log.err(f"modo '{cfg['nome']}' ativado.")
-
     if cfg.get("slideshow"):
         _run_list_slideshow(cfg, lista)
         return
-
     if len(subs) == 1 or any(s["hora_start"] is not None for s in subs):
         _run_list_schedule(subs, cfg)
         return
-
     _run_list_cycle(subs, cfg)
-
-
 def _run_list_cycle(subs, cfg):
     """Sub-itens só de tempo: um após o outro, cada um pelo seu tempo.
     Com `loop` int N, faz N passadas completas e volta à agenda do yml.
@@ -67,6 +73,8 @@ def _run_list_cycle(subs, cfg):
     salt = media.get_salt()
     day = date.today().isoformat()
     ciclos = 0
+    prev_yt_path = None
+    current_yt_path = None
     while True:
         if _list_should_stop():
             return
@@ -78,14 +86,23 @@ def _run_list_cycle(subs, cfg):
             hoje = media.day_shuffled(hoje, media.get_salt(), date.today())
         idx = int(cfg.get("idx", 0)) % len(hoje)
         sub = hoje[idx]
-        _apply_named(sub)
-
+        applied_path = _apply_named(sub, prev_path=prev_yt_path)
+        if applied_path and yt._is_in_yt_dir(applied_path):
+            if current_yt_path and current_yt_path != applied_path:
+                prev_yt_path = current_yt_path
+            current_yt_path = applied_path
+            try:
+                nxt_sub = hoje[(idx + 1) % len(hoje)]
+                if nxt_sub.get("is_yt") and nxt_sub.get("arquivo"):
+                    yt_prefetch.prefetch(nxt_sub["arquivo"], prev_path=prev_yt_path)
+            except Exception:
+                pass
         tempo_s = max(randomcfg.cfg_seconds(sub.get("tempo"), default=1800), 5)
         if sub.get("integro"):
             path_for_dur = None
             if sub.get("is_yt"):
                 try:
-                    path_for_dur = yt.download_yt(sub["arquivo"])
+                    path_for_dur = _get_yt_or_prefetch(sub["arquivo"], prev_path=prev_yt_path)
                 except Exception:
                     path_for_dur = None
             else:
@@ -115,7 +132,6 @@ def _run_list_cycle(subs, cfg):
                 log.err("lista concluída, voltando à agenda do yml.")
                 return
         state.set_list({**cfg, "idx": idx})
-
         deadline = time.monotonic() + tempo_s
         while True:
             left = deadline - time.monotonic()
@@ -124,12 +140,12 @@ def _run_list_cycle(subs, cfg):
             if _list_should_stop():
                 return
             time.sleep(min(left, float(POLL)))
-
-
 def _run_list_schedule(subs, cfg):
     """Agenda da lista (mini-agenda) ou item único persistente."""
     last_applied = None
     day_started = datetime.now().date()
+    prev_yt_path = None
+    current_yt_path = None
     while True:
         if _list_should_stop():
             return
@@ -153,13 +169,16 @@ def _run_list_schedule(subs, cfg):
                         chosen_id = media.day_shuffled(all_ids, media.get_salt())[0] if active.get("shuffled") else all_ids[0]
                         playlist_id = yt._extract_playlist_id(url) or "playlist"
                         cached = list((yt.yt_dir() / playlist_id).glob(f"{chosen_id}.*"))
-                        chosen = str(cached[0]) if cached else yt.download_yt(f"https://youtu.be/{chosen_id}")
+                        chosen = str(cached[0]) if cached else _get_yt_or_prefetch(f"https://youtu.be/{chosen_id}", prev_path=prev_yt_path)
                         key = (str(chosen), active["nome"], chosen_id)
                         if key != last_applied:
                             try:
                                 plugin, _ = apply.apply(str(chosen), loop=bool(active.get("repetir") or active.get("loop")), som=active.get("som"), integro=bool(active.get("integro")))
                                 log.err(f"aplicando: {entries.format_entry(active)} [1/1] {chosen_id} ({plugin})")
                                 last_applied = key
+                                if yt._is_in_yt_dir(chosen):
+                                    if current_yt_path and current_yt_path != chosen: prev_yt_path = current_yt_path
+                                    current_yt_path = chosen
                             except Exception as e:
                                 log.err(f"erro ao aplicar {chosen}: {e}")
                                 last_applied = None
@@ -185,7 +204,7 @@ def _run_list_schedule(subs, cfg):
                             playlist_id = yt._extract_playlist_id(url) or "playlist"
                             cached = list((yt.yt_dir() / playlist_id).glob(f"{chosen_id}.*"))
                             if not cached:
-                                chosen = yt.download_yt(f"https://youtu.be/{chosen_id}")
+                                chosen = _get_yt_or_prefetch(f"https://youtu.be/{chosen_id}", prev_path=prev_yt_path)
                             else:
                                 chosen = str(cached[0])
                             key = (str(chosen), active["nome"], idx)
@@ -194,6 +213,13 @@ def _run_list_schedule(subs, cfg):
                                     plugin, _ = apply.apply(str(chosen), loop=bool(active.get("repetir") or is_loop_true), som=active.get("som"), integro=bool(active.get("integro")))
                                     log.err(f"aplicando: {entries.format_entry(active)} [{idx+1}/{len(shuffled_ids)}] {chosen_id} ({plugin})")
                                     last_applied = key
+                                    if yt._is_in_yt_dir(chosen):
+                                        if current_yt_path and current_yt_path != chosen: prev_yt_path = current_yt_path
+                                        current_yt_path = chosen
+                                        try:
+                                            nid = shuffled_ids[(idx+1) % len(shuffled_ids)]
+                                            yt_prefetch.prefetch(f"https://youtu.be/{nid}", prev_path=prev_yt_path)
+                                        except: pass
                                 except Exception as e:
                                     log.err(f"erro ao aplicar {chosen}: {e}")
                                     last_applied = None
@@ -232,7 +258,7 @@ def _run_list_schedule(subs, cfg):
                 try:
                     path = active["arquivo"]
                     if active.get("is_yt"):
-                        path = yt.download_yt(path)
+                        path = _get_yt_or_prefetch(path, prev_path=prev_yt_path)
                     plugin, path = apply.apply(
                         path,
                         loop=bool(active.get("repetir") or active.get("loop")),
@@ -241,10 +267,16 @@ def _run_list_schedule(subs, cfg):
                     )
                     log.err(f"aplicando: {entries.format_entry(active)} ({plugin})")
                     last_applied = key
+                    if yt._is_in_yt_dir(path):
+                        if current_yt_path and current_yt_path != path: prev_yt_path = current_yt_path
+                        current_yt_path = path
+                        try:
+                            nxt_e = transitions.next_entry(subs, active, datetime.now())
+                            if nxt_e and nxt_e.get("is_yt"): yt_prefetch.prefetch(nxt_e["arquivo"], prev_path=prev_yt_path)
+                        except: pass
                 except Exception as e:
                     log.err(f"erro ao aplicar {active['arquivo']}: {e}")
                     last_applied = None
-
         nxt = transitions.next_transition(subs, now)
         if nxt is None:
             if cfg.get("persist") or cfg.get("loop"):
@@ -255,13 +287,11 @@ def _run_list_schedule(subs, cfg):
             return
         delay = max((nxt - datetime.now()).total_seconds(), 1.0)
         time.sleep(min(delay, float(POLL)))
-
-
-def _apply_named(sub):
+def _apply_named(sub, prev_path=None):
     try:
         path = sub["arquivo"]
         if sub.get("is_yt"):
-            path = yt.download_yt(path)
+            path = _get_yt_or_prefetch(path, prev_path=prev_path)
         plugin, path = apply.apply(
             path,
             loop=bool(sub.get("repetir") or sub.get("loop")),
@@ -269,10 +299,10 @@ def _apply_named(sub):
             integro=bool(sub.get("integro")),
         )
         log.err(f"aplicando: {entries.format_entry(sub)} ({plugin})")
+        return path
     except Exception as e:
         log.err(f"erro ao aplicar {sub.get('arquivo')}: {e}")
-
-
+        return None
 def _run_list_slideshow(cfg, lista):
     """Lista como slideshow (com -t/-m/-q/-l/-rep/-i/-v/-int/-s).
     Com `loop` int N, faz N passadas e volta à agenda do yml."""
@@ -294,7 +324,6 @@ def _run_list_slideshow(cfg, lista):
             log.err("nenhuma mídia na lista, aguardando...")
             time.sleep(POLL)
             continue
-
         loop = cfg.get("loop") or False
         rep = bool(cfg.get("rep"))
         integro = bool(cfg.get("integro"))
@@ -302,7 +331,6 @@ def _run_list_slideshow(cfg, lista):
         tempo_s = max(randomcfg.cfg_seconds(cfg.get("tempo"), default=1800), 5)
         qtd = cfg.get("qtd")
         max_s = cfg.get("max")
-
         order = media.day_shuffled(files, salt) if cfg.get("shuffled") else files
         day = date.today().isoformat()
         pos = state.get_pos()
@@ -311,14 +339,12 @@ def _run_list_slideshow(cfg, lista):
         else:
             idx = int(cfg.get("idx", 0)) % len(order)
             state.set_pos({"idx": idx, "day": day, "salt": salt, "dir": dir_key})
-
         chosen = order[idx % len(order)]
         try:
             plugin, path = apply.apply(chosen, loop=rep or loop is True, som=som, integro=integro)
             log.err(f"aplicando: {path} ({plugin}) [{idx + 1}/{len(order)}]")
         except Exception as e:
             log.err(f"erro ao aplicar {chosen}: {e}")
-
         if integro and media.match_tipo(chosen, "video"):
             dur = media.video_duration(chosen)
             if cfg.get("tempo") is not None:
@@ -363,7 +389,6 @@ def _run_list_slideshow(cfg, lista):
             cfg["max"] = max_s
             state.set_list(cfg)
         state.set_pos({"idx": idx, "day": day, "salt": salt, "dir": dir_key})
-
         deadline = time.monotonic() + step_s
         while True:
             left = deadline - time.monotonic()
