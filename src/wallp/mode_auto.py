@@ -50,6 +50,13 @@ def _auto_mode(opts):
             "slideshow": False, "persist": True, "idx": 0,
             "shuffled": bool(e.get("shuffled")),
         }
+    cur = state.get_list()
+    # se já está no mesmo modo (mesmo nome e flags), não reinicia nem limpa pos para não cortar episódio
+    if cur and cur.get("nome") == cfg["nome"] and cur.get("shuffled") == cfg["shuffled"] and cur.get("integro") == cfg["integro"] and cur.get("persist") == cfg["persist"]:
+        # apenas garante que está on, sem restart
+        state.set_on(True)
+        log.info(f"Modo automático já está em '{opts['target']}'")
+        return
     state.clear_pos()
     state.clear_random()
     state.set_list(cfg)

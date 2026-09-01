@@ -8,6 +8,7 @@ RANDOM_FILE = STATE_DIR / "random"
 LIST_FILE = STATE_DIR / "list"
 LAST_FILE = STATE_DIR / "last"
 POS_FILE = STATE_DIR / "pos"
+CURRENT_FILE = STATE_DIR / "current"
 
 
 def set_on(on):
@@ -89,3 +90,22 @@ def get_pos():
         return json.loads(POS_FILE.read_text(encoding="utf-8"))
     except (FileNotFoundError, OSError, json.JSONDecodeError):
         return None
+
+
+def set_current(cur):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    CURRENT_FILE.write_text(json.dumps(cur, ensure_ascii=False), encoding="utf-8")
+
+
+def get_current():
+    try:
+        return json.loads(CURRENT_FILE.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return None
+
+
+def clear_current():
+    try:
+        CURRENT_FILE.unlink()
+    except FileNotFoundError:
+        pass
