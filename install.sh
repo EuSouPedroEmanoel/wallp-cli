@@ -45,7 +45,8 @@ else
     if [ "$PROJ_ROOT" != "$INSTALL_ROOT" ] && [ "$CHECK" != 1 ]; then
         mkdir -p "$INSTALL_ROOT"
         # copia arquivos essenciais para rodar wallp a partir de ~/.local/share/wallp
-        for item in bin src wallp.yml wallp.yml.bin assets pyproject.toml wallp_cli.py; do
+        # wallp.yml não fica no repo (só wallp.yml.example), é gerado direto em ~/.config
+        for item in bin src assets pyproject.toml wallp_cli.py wallp.yml.example; do
             if [ -e "$PROJ_ROOT/$item" ]; then
                 cp -a "$PROJ_ROOT/$item" "$INSTALL_ROOT/" 2>/dev/null || true
             fi
@@ -53,6 +54,18 @@ else
         # garante .git não vai junto no modo não-dev
         rm -rf "$INSTALL_ROOT/.git" 2>/dev/null || true
         PROJ_ROOT="$INSTALL_ROOT"
+    fi
+fi
+
+# marca variante instalada para quick-install auto-detectar (independe do yml que o user pode editar)
+if [ "$CHECK" != 1 ]; then
+    mkdir -p "$INSTALL_ROOT" 2>/dev/null || true
+    if [ "$BIN" -eq 1 ]; then
+        echo "bin" > "$INSTALL_ROOT/.wallp-variant" 2>/dev/null || true
+    elif [ "$DEV" -eq 1 ]; then
+        echo "dev" > "$INSTALL_ROOT/.wallp-variant" 2>/dev/null || true
+    else
+        echo "full" > "$INSTALL_ROOT/.wallp-variant" 2>/dev/null || true
     fi
 fi
 
@@ -132,13 +145,32 @@ CFG="$HOME/.config/wallp/wallp.yml"
 if [ ! -f "$CFG" ]; then
     if [ "$CHECK" = 1 ]; then no "config $CFG"; else
         mkdir -p "$(dirname "$CFG")"
-        # bin usa wallp.yml.bin (~/Imagens), full usa wallp.yml (~/Imagens/wallp)
-        SRC_YML="$PROJ_ROOT/wallp.yml"
-        if [ "$BIN" -eq 1 ] && [ -f "$PROJ_ROOT/wallp.yml.bin" ]; then
-            SRC_YML="$PROJ_ROOT/wallp.yml.bin"
+        # só wallp.yml.example fica no repo; wallp.yml é gerado direto em ~/.config
+        if [ "$BIN" -eq 1 ]; then
+            cat > "$CFG" <<'YML'
+# wallp — agenda de wallpapers (gerado: bin minimal)
+- nome: padrao
+  type: diretório
+  local: ~/Imagens
+  tempo: 30s
+  loop: true
+  shuffled: true
+  default: true
+YML
+            ok "config criado: $CFG (bin: ~/Imagens)"
+        else
+            cat > "$CFG" <<'YML'
+# wallp — agenda de wallpapers (gerado pelo install.sh)
+- nome: padrao
+  type: diretório
+  local: ~/Imagens/wallp
+  tempo: 30s
+  loop: true
+  shuffled: true
+  default: true
+YML
+            ok "config criado: $CFG (full: ~/Imagens/wallp)"
         fi
-        cp "$SRC_YML" "$CFG"
-        ok "config criado: $CFG ($([ "$BIN" -eq 1 ] && echo "bin: ~/Imagens" || echo "full: ~/Imagens/wallp"))"
     fi
 else
     ok "config já existe: $CFG"

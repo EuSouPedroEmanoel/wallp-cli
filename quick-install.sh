@@ -180,6 +180,27 @@ fi
 
 # modo tarball (padrão, sem git, sem jq) — baixa release
 ASSET_VER="$VERSION_NOV"
+# auto-detecta bin/dev se já instalado e usuário não passou --bin/--dev explícito
+# usa .wallp-variant (criado pelo install.sh) — independe do yml que o user pode editar
+if [ "$WANTS_BIN" -eq 0 ] && [ "$WANTS_DEV" -eq 0 ] && [ -d "$TARGET" ]; then
+  if [ -f "$TARGET/.wallp-variant" ]; then
+    case "$(cat "$TARGET/.wallp-variant" 2>/dev/null | tr -d '[:space:]')" in
+      bin) WANTS_BIN=1 ;;
+      dev) WANTS_DEV=1 ;;
+    esac
+  elif [ -f "$TARGET/wallp.yml" ]; then
+    # fallback para instalações antigas sem .wallp-variant (1.0.2): detecta via yml/assets
+    if grep -q 'local: ~/Imagens$' "$TARGET/wallp.yml" 2>/dev/null; then
+      WANTS_BIN=1
+    elif [ ! -d "$TARGET/assets/wallpapers" ] && [ ! -d "$TARGET/src/wallp/assets" ] && grep -q 'local: ~/Imagens' "$TARGET/wallp.yml" 2>/dev/null; then
+      WANTS_BIN=1
+    fi
+  fi
+  # fallback final: sem assets e com conteúdo → bin (full sempre tem default-wallp.png)
+  if [ "$WANTS_BIN" -eq 0 ] && [ "$WANTS_DEV" -eq 0 ] && [ -d "$TARGET" ] && [ -n "$(ls -A "$TARGET" 2>/dev/null)" ] && [ ! -d "$TARGET/assets/wallpapers" ] && [ ! -d "$TARGET/src/wallp/assets" ] && [ -f "$TARGET/wallp.yml" ]; then
+    WANTS_BIN=1
+  fi
+fi
 # bin usa wallp-cli-bin, full usa wallp-cli
 if [ "$WANTS_BIN" -eq 1 ]; then
   PKG_BASE="wallp-cli-bin"

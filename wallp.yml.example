@@ -1,0 +1,120 @@
+# wallp — agenda de wallpapers (exemplo)
+#
+# Copie para ~/.config/wallp/wallp.yml e ajuste os caminhos.
+# Cada item tem:
+#   nome:    nome (usado no `wallp -c <nome>`)
+#   local:   caminho do wallpaper (vídeo, imagem ou pasta com type: diretório)
+#   type:    diretório (opcional) — local é uma pasta; tempo = intervalo entre arquivos
+#   loop:    true/N/false (opcional) — diretório/lista: true cicla infinito, N cicla
+#            N vezes e termina, false mostra 1x; em vídeo/youtube: true trava o
+#            playback em loop infinito (não pode ter tempo junto)
+#   hora:    HH:MM, "9h", "9h30m" ou range "9h-10h" (opcional)
+#            sem range, exige a tag tempo (fim = início + tempo)
+#   tempo:   duração ativo: 30m, 2h, 1d, 1h30m10s (opcional)
+#   dia:     (opcional) só roda em dias específicos:
+#              seg|ter|qua|qui|sex|sab|dom  = toda semana nesse dia
+#              N (1-31)                      = todo dia N do mês (ex.: 15)
+#              DD-MM                         = todo ano nesse dia (ex.: 01-04)
+#              DD-MM-AAAA                    = só nesse dia (ex.: 20-12-2026)
+#            sem dia, vale todos os dias
+#   default: true (opcional) — o padrão, preenche os intervalos vazios.
+#            Pra rodar `wallp -a`, precisa de um default global (sem dia), único.
+#   shuffled: true (opcional, em diretórios) — ordem aleatória (mesma o dia todo,
+#            muda à meia-noite; o sorteio usa um salt em shuffle.json)
+#   list:    lista de sub-itens (opcional) — cada sub-item é um wallpaper completo.
+#            Com hora/tempo na lista: ela vira um item da agenda que cicla os
+#            sub-itens; sem: os sub-itens entram direto na agenda (grupo nomeado).
+#            Aceita listas dentro de listas; sub sem `dia` herda o `dia` da lista.
+#   repetir: true (opcional) — o vídeo repete a reprodução (loop de playback)
+#            até o tempo do item acabar (não ignora o tempo). Para travar um vídeo
+#            infinitamente use loop: true no vídeo (sem tempo).
+#
+# Prioridade: itens com hora substituem os de tempo na hora; os de tempo/diretório
+# (sem hora) rodam do dia mais específico pro mais genérico (data > DD-MM > dia do
+# mês > weekday > sem dia) e, se a rotação do dia terminar sem loop, seguem pro
+# genérico; o default (mais específico ativo; o global é o piso) cobre o restante.
+
+# --- itens simples ----------------------------------------------------------
+
+- nome: manha
+  type: diretório
+  local: ~/Vídeos/Wallpaper
+  tempo: 30m
+  loop: true
+  shuffled: true
+  hora: "8h-11h"
+
+- nome: tarde
+  local: ~/Vídeos/Wallpaper/sem título.mp4
+  tempo: 2h
+
+- nome: padrao
+  local: ~/Vídeos/Wallpaper/Celeste Animated Wallpaper - Farewell.mp4
+  default: true
+
+# --- só em dias específicos --------------------------------------------------
+# dia: seg   -> toda segunda-feira
+# dia: 15    -> todo dia 15 do mês
+# dia: 01-04 -> todo dia 1º de abril (DD-MM)
+# dia: 20-12-2026 -> só em 20/12/2026 (DD-MM-AAAA)
+# Fora do dia, o item é ignorado na agenda (não entra na rotação nem no default).
+
+# - nome: fim de semana
+#   local: ~/Vídeos/Wallpaper/sabado.mp4
+#   dia: sab
+#   tempo: 12h
+
+# - nome: aniversario
+#   local: ~/Vídeos/Wallpaper/bolo.mp4
+#   dia: 15-03-2026
+#   hora: "8h-20h"
+
+# --- loop com número de vezes -------------------------------------------------
+# loop: N em diretório/lista cicla N vezes e volta à agenda (igual fim de ciclo)
+
+# - nome: passeio
+#   type: diretório
+#   local: ~/Vídeos/Wallpaper/Passeio
+#   tempo: 10m
+#   loop: 3
+
+# --- lista (agrupamento: os sub-itens entram na agenda com as horas deles) ---
+# wallp -c "Lista de exemplo"      roda só essa lista
+# wallp -a "Lista de exemplo"      roda só ela, persistente (loop do yml)
+#
+# - nome: Lista de exemplo
+#   list:
+#     - nome: manha
+#       type: diretório
+#       local: ~/Vídeos/Wallpaper
+#       tempo: 30m
+#       loop: true
+#       shuffled: true
+#       hora: "8h-11h"
+#     - nome: tarde
+#       type: diretório
+#       local: ~/Vídeos/Wallpaper
+#       tempo: 30m
+#       loop: true
+#       shuffled: true
+#       hora: "12h-18h"
+
+# --- lista (unidade: a lista tem hora/tempo e cicla os sub-itens) ------------
+# wallp -c "Ciclo"                  uma passada; -l true = loop até -x
+# wallp -c "Ciclo" -t 15m -q 10     lista como slideshow (args do -r)
+#
+# - nome: Ciclo
+#   tempo: 2h
+#   list:
+#     - nome: a
+#       local: ~/Vídeos/Wallpaper/a.mp4
+#       tempo: 30m
+#     - nome: b
+#       type: diretório
+#       local: ~/Vídeos/Wallpaper
+#       tempo: 10m
+#       loop: true
+#       shuffled: true
+#     - nome: c
+#       local: ~/Vídeos/Wallpaper/c.mp4
+#       tempo: 1h
