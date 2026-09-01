@@ -1,6 +1,6 @@
 # Maintainer: Pedro Emanoel <pedroemanoeldasilvadeoliveira@gmail.com>
 pkgname=wallp-cli
-pkgver=1.0.0
+pkgver=1.0.1
 pkgrel=1
 pkgdesc="CLI para wallpaper animado/imagem no KDE Plasma (Smart Video Wallpaper Reborn) com modo automático por agenda"
 arch=('any')
