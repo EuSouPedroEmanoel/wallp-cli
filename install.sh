@@ -4,22 +4,57 @@
 # python3 + dbus/yaml, codecs de vídeo, o plasmoid Smart Video Wallpaper Reborn,
 # o binário em ~/.local/bin, o config ~/.config/wallp/wallp.yml e o daemon systemd.
 #
-# Uso:  ./install.sh [-y|--yes] [--check]
-#   -y  instala dependências faltando sem perguntar (usa sudo / yay)
-#       --check  só verifica, não altera nada
+# Uso:  ./install.sh [-y|--yes] [--check] [--dev] [--bin]
+#   -y      instala dependências faltando sem perguntar (usa sudo / yay)
+#   --check só verifica, não altera nada
+#   --dev   modo desenvolvimento: mantém código em ~/dev/wallp/wallp-cli (symlink),
+#           padrão sem --dev instala em ~/.local/share/wallp (XDG, sem deixar nada em ~/dev)
+#   --bin   pacote mínimo wallp-cli-bin: sem capa padrão, sem repo dev,
+#           wallpaper padrão pego de ~/Imagens (não ~/Imagens/wallp), sem copiar wallpapers
 
 set -euo pipefail
 
 PROJ_ROOT="$(cd "$(dirname "$0")" && pwd)"
 YES=0
 CHECK=0
+DEV=0
+BIN=0
 for a in "$@"; do
     case "$a" in
         -y|--yes) YES=1 ;;
         --check) CHECK=1 ;;
-        *) echo "uso: $0 [-y] [--check]"; exit 1 ;;
+        --dev) DEV=1 ;;
+        --bin) BIN=1 ;;
+        *) echo "uso: $0 [-y] [--check] [--dev] [--bin]"; exit 1 ;;
     esac
 done
+
+# auto-detect dev: se já está em ~/dev/wallp/* com .git, assume --dev mesmo sem flag
+if [ "$DEV" -eq 0 ] && [[ "$PROJ_ROOT" == "$HOME/dev/wallp"* ]] && [ -d "$PROJ_ROOT/.git" ]; then
+    DEV=1
+fi
+
+# destino da instalação: dev (~/dev) ou XDG_DATA_HOME (~/.local/share/wallp)
+XDG_DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
+WALLP_DATA="$XDG_DATA/wallp"
+if [ "$DEV" -eq 1 ]; then
+    INSTALL_ROOT="$PROJ_ROOT"
+else
+    INSTALL_ROOT="$WALLP_DATA"
+    # se PROJ_ROOT já é o destino (ex.: já instalado via quick-install tarball em ~/.local/share/wallp), não copia
+    if [ "$PROJ_ROOT" != "$INSTALL_ROOT" ] && [ "$CHECK" != 1 ]; then
+        mkdir -p "$INSTALL_ROOT"
+        # copia arquivos essenciais para rodar wallp a partir de ~/.local/share/wallp
+        for item in bin src wallp.yml wallp.yml.bin assets pyproject.toml wallp_cli.py; do
+            if [ -e "$PROJ_ROOT/$item" ]; then
+                cp -a "$PROJ_ROOT/$item" "$INSTALL_ROOT/" 2>/dev/null || true
+            fi
+        done
+        # garante .git não vai junto no modo não-dev
+        rm -rf "$INSTALL_ROOT/.git" 2>/dev/null || true
+        PROJ_ROOT="$INSTALL_ROOT"
+    fi
+fi
 
 OK=0; FAIL=0
 step() { printf '\n==> %s\n' "$1"; }
@@ -97,32 +132,53 @@ CFG="$HOME/.config/wallp/wallp.yml"
 if [ ! -f "$CFG" ]; then
     if [ "$CHECK" = 1 ]; then no "config $CFG"; else
         mkdir -p "$(dirname "$CFG")"
-        cp "$PROJ_ROOT/wallp.yml" "$CFG"
-        ok "config criado: $CFG"
+        # bin usa wallp.yml.bin (~/Imagens), full usa wallp.yml (~/Imagens/wallp)
+        SRC_YML="$PROJ_ROOT/wallp.yml"
+        if [ "$BIN" -eq 1 ] && [ -f "$PROJ_ROOT/wallp.yml.bin" ]; then
+            SRC_YML="$PROJ_ROOT/wallp.yml.bin"
+        fi
+        cp "$SRC_YML" "$CFG"
+        ok "config criado: $CFG ($([ "$BIN" -eq 1 ] && echo "bin: ~/Imagens" || echo "full: ~/Imagens/wallp"))"
     fi
 else
     ok "config já existe: $CFG"
 fi
-# pasta padrão do yml (~/Imagens/wallp) — cria se não existir
+# pasta padrão do yml — cria se não existir
 if [ "$CHECK" != 1 ]; then
-    if have xdg-user-dir; then
-        _pics="$(xdg-user-dir PICTURES 2>/dev/null || echo "")"
-        if [ -z "$_pics" ] || [ "$_pics" = "$HOME" ]; then
+    if [ "$BIN" -eq 1 ]; then
+        # bin: wallpaper padrão é ~/Imagens direto, sem subpasta wallp, sem capa
+        if have xdg-user-dir; then
+            _pics="$(xdg-user-dir PICTURES 2>/dev/null || echo "")"
+            if [ -z "$_pics" ] || [ "$_pics" = "$HOME" ]; then
+                if [ -d "$HOME/Imagens" ]; then _pics="$HOME/Imagens"; else _pics="$HOME/Pictures"; fi
+            fi
+        else
             if [ -d "$HOME/Imagens" ]; then _pics="$HOME/Imagens"; else _pics="$HOME/Pictures"; fi
         fi
+        mkdir -p "$_pics" 2>/dev/null || true
+        if [ -d "$_pics" ]; then ok "pasta padrão (bin): $_pics"; else ok "pasta padrão (bin): ~/Imagens"; fi
+        # bin não copia capa padrão — usa o que já está em ~/Imagens
     else
-        if [ -d "$HOME/Imagens" ]; then _pics="$HOME/Imagens"; else _pics="$HOME/Pictures"; fi
-    fi
-    mkdir -p "$_pics/wallp" 2>/dev/null || mkdir -p "$HOME/Imagens/wallp" 2>/dev/null || true
-    if [ -d "$_pics/wallp" ]; then ok "pasta padrão: $_pics/wallp"; else ok "pasta padrão: ~/Imagens/wallp"; fi
-    # wallpapers padrão — copia se pasta estiver vazia (primeiro -a)
-    if [ -d "$_pics/wallp" ] && [ -z "$(ls -A "$_pics/wallp" 2>/dev/null)" ]; then
-        SRC_DIR=""
-        if [ -d "$PROJ_ROOT/assets/wallpapers" ]; then SRC_DIR="$PROJ_ROOT/assets/wallpapers"
-        elif [ -d "$PROJ_ROOT/src/wallp/assets" ]; then SRC_DIR="$PROJ_ROOT/src/wallp/assets"
+        # full: ~/Imagens/wallp com capa padrão
+        if have xdg-user-dir; then
+            _pics="$(xdg-user-dir PICTURES 2>/dev/null || echo "")"
+            if [ -z "$_pics" ] || [ "$_pics" = "$HOME" ]; then
+                if [ -d "$HOME/Imagens" ]; then _pics="$HOME/Imagens"; else _pics="$HOME/Pictures"; fi
+            fi
+        else
+            if [ -d "$HOME/Imagens" ]; then _pics="$HOME/Imagens"; else _pics="$HOME/Pictures"; fi
         fi
-        if [ -n "$SRC_DIR" ] && [ -n "$(ls -A "$SRC_DIR" 2>/dev/null)" ]; then
-            cp "$SRC_DIR"/* "$_pics/wallp/" 2>/dev/null && ok "wallpapers padrão copiados para $_pics/wallp/ ($(ls -1 "$_pics/wallp" 2>/dev/null | wc -l) imagens)"
+        mkdir -p "$_pics/wallp" 2>/dev/null || mkdir -p "$HOME/Imagens/wallp" 2>/dev/null || true
+        if [ -d "$_pics/wallp" ]; then ok "pasta padrão: $_pics/wallp"; else ok "pasta padrão: ~/Imagens/wallp"; fi
+        # wallpapers padrão — copia se pasta estiver vazia (primeiro -a)
+        if [ -d "$_pics/wallp" ] && [ -z "$(ls -A "$_pics/wallp" 2>/dev/null)" ]; then
+            SRC_DIR=""
+            if [ -d "$PROJ_ROOT/assets/wallpapers" ]; then SRC_DIR="$PROJ_ROOT/assets/wallpapers"
+            elif [ -d "$PROJ_ROOT/src/wallp/assets" ]; then SRC_DIR="$PROJ_ROOT/src/wallp/assets"
+            fi
+            if [ -n "$SRC_DIR" ] && [ -n "$(ls -A "$SRC_DIR" 2>/dev/null)" ]; then
+                cp "$SRC_DIR"/* "$_pics/wallp/" 2>/dev/null && ok "wallpapers padrão copiados para $_pics/wallp/ ($(ls -1 "$_pics/wallp" 2>/dev/null | wc -l) imagens)"
+            fi
         fi
     fi
 fi
@@ -157,8 +213,11 @@ fi
 
 # ---------------------------------------------------------------- venv (opcional)
 if [ "$CHECK" != 1 ] && [ ! -d "$PROJ_ROOT/.venv" ]; then
-    echo "==> Ambiente de testes (.venv) — opcional"
-    python3 -m venv "$PROJ_ROOT/.venv" 2>/dev/null && "$PROJ_ROOT/.venv/bin/pip" install -q pytest pyyaml || no "venv"
+    # bin não precisa de venv dev
+    if [ "$BIN" -eq 0 ]; then
+        echo "==> Ambiente de testes (.venv) — opcional"
+        python3 -m venv "$PROJ_ROOT/.venv" 2>/dev/null && "$PROJ_ROOT/.venv/bin/pip" install -q pytest pyyaml || no "venv"
+    fi
 fi
 
 # ---------------------------------------------------------------- resumo
