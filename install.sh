@@ -150,6 +150,63 @@ else
             no "yay (instale o plasmoid manualmente: $PLASMOID_SRC ou AUR plasma6-wallpapers-smart-video-wallpaper-reborn)"
         fi
     fi
+    # auto-baixa wallp-plasma via tarball se ainda não instalado (sem depender de yay/dev)
+    if [ ! -d "/usr/share/plasma/wallpapers/$PLASMOID" ] && [ ! -d "$HOME/.local/share/plasma/wallpapers/$PLASMOID" ] && [ ! -d "$PLASMOID_SRC/contents" ]; then
+        if [ "$CHECK" = 1 ]; then
+            no "wallp-plasma não instalado (seria baixado via GitHub releases)"
+        else
+            if have curl || have wget; then
+                PLASMA_TAG="v1.0.0"
+                PLASMA_VER="1.0.0"
+                # tenta latest via GitHub API
+                if have curl; then
+                    LATEST_TAG=$(curl -fsSL https://api.github.com/repos/EuSouPedroEmanoel/wallp-plasma/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
+                    if [ -n "$LATEST_TAG" ]; then PLASMA_TAG="$LATEST_TAG"; PLASMA_VER="${LATEST_TAG#v}"; fi
+                elif have wget; then
+                    LATEST_TAG=$(wget -qO- https://api.github.com/repos/EuSouPedroEmanoel/wallp-plasma/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
+                    if [ -n "$LATEST_TAG" ]; then PLASMA_TAG="$LATEST_TAG"; PLASMA_VER="${LATEST_TAG#v}"; fi
+                fi
+                TARBALL_URL="https://github.com/EuSouPedroEmanoel/wallp-plasma/releases/download/$PLASMA_TAG/wallp-plasma-$PLASMA_VER.tar.gz"
+                TMPDIR_PLASMA="$(mktemp -d)"
+                PLASMA_DEST="$HOME/.local/share/wallp-plasma"
+                echo "  Baixando wallp-plasma $PLASMA_TAG via tarball..."
+                DL_OK=0
+                if have curl; then
+                    if curl -fsSL "$TARBALL_URL" -o "$TMPDIR_PLASMA/wallp-plasma.tar.gz" 2>/dev/null; then DL_OK=1; fi
+                elif have wget; then
+                    if wget -qO "$TMPDIR_PLASMA/wallp-plasma.tar.gz" "$TARBALL_URL" 2>/dev/null; then DL_OK=1; fi
+                fi
+                if [ "$DL_OK" = 1 ]; then
+                    mkdir -p "$PLASMA_DEST"
+                    # limpa destino antigo (mantém se for git dev, mas aqui é XDG)
+                    if [ -d "$PLASMA_DEST/.git" ]; then
+                        echo "  (preservando $PLASMA_DEST/.git dev)"
+                    else
+                        rm -rf "$PLASMA_DEST" 2>/dev/null || true
+                        mkdir -p "$PLASMA_DEST"
+                    fi
+                    if tar xzf "$TMPDIR_PLASMA/wallp-plasma.tar.gz" -C "$PLASMA_DEST" --strip-components=1 2>/dev/null || tar xzf "$TMPDIR_PLASMA/wallp-plasma.tar.gz" -C "$PLASMA_DEST" 2>/dev/null; then
+                        if [ -x "$PLASMA_DEST/install.sh" ]; then
+                            bash "$PLASMA_DEST/install.sh" -y >/dev/null 2>&1 && ok "plasmoid $PLASMOID instalado via tarball $PLASMA_TAG em $PLASMA_DEST" || no "falha ao instalar wallp-plasma via tarball"
+                        else
+                            no "wallp-plasma tarball sem install.sh"
+                        fi
+                    else
+                        no "falha ao extrair wallp-plasma tarball"
+                    fi
+                else
+                    no "falha ao baixar $TARBALL_URL"
+                fi
+                rm -rf "$TMPDIR_PLASMA" 2>/dev/null || true
+                # atualiza PLASMOID_SRC para daemon usar se instalou
+                if [ -d "$HOME/.local/share/plasma/wallpapers/$PLASMOID" ] || [ -d "/usr/share/plasma/wallpapers/$PLASMOID" ]; then
+                    PLASMOID_SRC="$HOME/.local/share/plasma/wallpapers/$PLASMOID"
+                fi
+            else
+                no "curl/wget necessário para baixar wallp-plasma (ou instale via --dev / yay)"
+            fi
+        fi
+    fi
 fi
 
 # ---------------------------------------------------------------- plasma
@@ -254,6 +311,12 @@ if [ -d "$PLASMA_ROOT/bin" ] && [ -f "$PLASMA_ROOT/bin/wallp-plasma-daemon" ]; t
     DAEMON_DESC="wallp-plasma — daemon de wallpaper (agenda + com.wallp.wallpaper)"
     # garante bin linkado
     if [ "$CHECK" != 1 ]; then ln -sf "$PLASMA_ROOT/bin/wallp-plasma-daemon" "$HOME/.local/bin/wallp-plasma-daemon" 2>/dev/null || true; fi
+elif [ -x "$HOME/.local/bin/wallp-plasma-daemon" ]; then
+    DAEMON_EXEC="$HOME/.local/bin/wallp-plasma-daemon"
+    DAEMON_DESC="wallp-plasma — daemon de wallpaper (agenda + com.wallp.wallpaper)"
+elif [ -x "/usr/local/bin/wallp-plasma-daemon" ] || [ -x "/usr/bin/wallp-plasma-daemon" ]; then
+    if [ -x "/usr/local/bin/wallp-plasma-daemon" ]; then DAEMON_EXEC="/usr/local/bin/wallp-plasma-daemon"; else DAEMON_EXEC="/usr/bin/wallp-plasma-daemon"; fi
+    DAEMON_DESC="wallp-plasma — daemon de wallpaper (agenda + com.wallp.wallpaper)"
 else
     DAEMON_EXEC="/usr/bin/python3 $PROJ_ROOT/bin/wallp -d"
     DAEMON_DESC="wallp - modo automático de wallpaper (legado, prefira wallp-plasma)"
