@@ -14,7 +14,7 @@ CLI para trocar o wallpaper (animado ou imagem) do **KDE Plasma** usando o plasm
 | Método | Comando |
 |---|---|
 | **curl** (recomendado) | `curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh \| bash` <br> `curl -fsSL .../quick-install.sh \| bash -s -- -y` (sem perguntar) |
-| **ZIP / TAR.GZ** | [wallp-cli-1.0.1.zip](https://github.com/EuSouPedroEmanoel/wallp-cli/releases/latest/download/wallp-cli-1.0.1.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallp-cli/releases/latest/download/wallp-cli-1.0.1.tar.gz) → `unzip ... && cd wallp-cli-* && ./install.sh -y` |
+| **ZIP / TAR.GZ** | [wallp-cli-1.0.2.zip](https://github.com/EuSouPedroEmanoel/wallp-cli/releases/latest/download/wallp-cli-1.0.2.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallp-cli/releases/latest/download/wallp-cli-1.0.2.tar.gz) → `unzip ... && cd wallp-cli-* && ./install.sh -y` |
 | **git clone** | `git clone https://github.com/EuSouPedroEmanoel/wallp-cli.git ~/dev/wallp/wallp-cli && ~/dev/wallp/wallp-cli/install.sh -y` |
 
 > `quick-install.sh` baixa o tarball da última release por padrão (sem `git`/`jq`). `install.sh` cuida de `python-dbus`, `python-yaml`, `qt6-multimedia-ffmpeg`, plasmoid e daemon.
