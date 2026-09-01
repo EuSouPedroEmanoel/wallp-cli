@@ -6,3 +6,4 @@ __pycache__/
 PKGBUILD.local
 .SRCINFO.local
 .wallp-variant
+.backlog/

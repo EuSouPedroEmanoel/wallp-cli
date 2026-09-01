@@ -19,6 +19,20 @@ def main():
         return
 
     if opts["daemon"]:
+        # daemon migrado para wallp-plasma (canônico). Delega se instalado, senão fallback local.
+        import os
+        from pathlib import Path
+
+        plasma_cands = [
+            Path.home() / "dev/wallp/wallp-plasma/bin/wallp-plasma-daemon",
+            Path.home() / ".local/bin/wallp-plasma-daemon",
+            Path("/usr/local/bin/wallp-plasma-daemon"),
+            Path("/usr/bin/wallp-plasma-daemon"),
+        ]
+        for cand in plasma_cands:
+            if cand.is_file() and os.access(cand, os.X_OK):
+                os.execv(str(cand), [str(cand)] + sys.argv[1:])
+        # fallback: roda daemon local (legado) se wallp-plasma não instalado
         daemon_run()
         return
 

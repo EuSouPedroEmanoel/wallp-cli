@@ -108,20 +108,47 @@ for pkg in qt6-multimedia qt6-multimedia-ffmpeg; do
 done
 
 # ---------------------------------------------------------------- plasmoid
-step "Plasmoid Smart Video Wallpaper Reborn"
-PLASMOID="luisbocanegra.smart.video.wallpaper.reborn"
+step "Plasmoid wallp (com.wallp.wallpaper) unificado"
+PLASMOID="com.wallp.wallpaper"
+PLASMOID_LEGACY="luisbocanegra.smart.video.wallpaper.reborn"
+# tenta instalar o novo plasmóide a partir de ../plasma-wallpaper-wallp se existir (dev)
+PLASMOID_SRC="$PROJ_ROOT/../wallp-plasma"
+if [ ! -d "$PLASMOID_SRC" ]; then
+    PLASMOID_SRC="$HOME/dev/wallp/wallp-plasma"
+fi
 if [ -d "/usr/share/plasma/wallpapers/$PLASMOID" ] || [ -d "$HOME/.local/share/plasma/wallpapers/$PLASMOID" ]; then
     ok "plasmoid $PLASMOID"
+elif [ -d "$PLASMOID_SRC/contents" ] && [ -f "$PLASMOID_SRC/metadata.json" ]; then
+    no "plasmoid $PLASMOID (instalando local de $PLASMOID_SRC)"
+    if [ "$CHECK" = 1 ]; then ok "plasmóide local disponível em $PLASMOID_SRC"; else
+        if [ -x "$PLASMOID_SRC/install.sh" ]; then
+            bash "$PLASMOID_SRC/install.sh" && ok "plasmoid $PLASMOID instalado (local cmake/cp)"
+        elif command -v cmake >/dev/null 2>&1; then
+            cmake -B "$PLASMOID_SRC/build" --install-prefix "$HOME/.local" >/dev/null && cmake --install "$PLASMOID_SRC/build" >/dev/null && ok "plasmoid $PLASMOID instalado (cmake)"
+        else
+            mkdir -p "$HOME/.local/share/plasma/wallpapers/$PLASMOID/contents"
+            cp -a "$PLASMOID_SRC/metadata.json" "$HOME/.local/share/plasma/wallpapers/$PLASMOID/" 2>/dev/null && cp -a "$PLASMOID_SRC/contents/"* "$HOME/.local/share/plasma/wallpapers/$PLASMOID/contents/" 2>/dev/null && ok "plasmoid $PLASMOID instalado (cp)"
+        fi
+    fi
 else
-    no "plasmoid $PLASMOID"
-    if have yay; then
-        if [ "$CHECK" = 1 ]; then ok "yay disponível (instale com: yay -S plasma6-wallpapers-smart-video-wallpaper-reborn)"; else
-        if ask; then
-            yay -S --needed plasma6-wallpapers-smart-video-wallpaper-reborn
-            ok "plasmoid instalado via yay"
-        else no "plasmoid (não instalado)"; fi; fi
+    # fallback legado
+    if [ -d "/usr/share/plasma/wallpapers/$PLASMOID_LEGACY" ] || [ -d "$HOME/.local/share/plasma/wallpapers/$PLASMOID_LEGACY" ]; then
+        ok "plasmoid $PLASMOID_LEGACY (legado, prefira $PLASMOID)"
     else
-        no "yay (instale o plasmoid manualmente: AUR plasma6-wallpapers-smart-video-wallpaper-reborn)"
+        no "plasmoid $PLASMOID"
+        if have yay; then
+            if [ "$CHECK" = 1 ]; then ok "yay disponível (instale com: yay -S plasma6-wallpapers-smart-video-wallpaper-reborn ou instale $PLASMOID de $PLASMOID_SRC)"; else
+            if ask; then
+                # tenta novo plasmóide via AUR futuro, cai para legado
+                if yay -S --needed wallp-plasma 2>/dev/null || yay -S --needed plasma6-wallpapers-wallp 2>/dev/null; then
+                    ok "plasmoid $PLASMOID instalado via yay"
+                else
+                    yay -S --needed plasma6-wallpapers-smart-video-wallpaper-reborn && ok "plasmoid $PLASMOID_LEGACY instalado via yay (legado)"
+                fi
+            else no "plasmoid (não instalado)"; fi; fi
+        else
+            no "yay (instale o plasmoid manualmente: $PLASMOID_SRC ou AUR plasma6-wallpapers-smart-video-wallpaper-reborn)"
+        fi
     fi
 fi
 
@@ -215,20 +242,32 @@ if [ "$CHECK" != 1 ]; then
     fi
 fi
 
-# ---------------------------------------------------------------- daemon
-step "Daemon (systemd --user)"
+# ---------------------------------------------------------------- daemon (migrado para wallp-plasma)
+step "Daemon (systemd --user) — canônico em wallp-plasma"
 UNIT="wallp-daemon.service"
 UNIT_DIR="$HOME/.config/systemd/user"
 mkdir -p "$UNIT_DIR"
+# daemon agora é de wallp-plasma; este install delega se wallp-plasma existir
+PLASMA_ROOT="$HOME/dev/wallp/wallp-plasma"
+if [ -d "$PLASMA_ROOT/bin" ] && [ -f "$PLASMA_ROOT/bin/wallp-plasma-daemon" ]; then
+    DAEMON_EXEC="$HOME/.local/bin/wallp-plasma-daemon"
+    DAEMON_DESC="wallp-plasma — daemon de wallpaper (agenda + com.wallp.wallpaper)"
+    # garante bin linkado
+    if [ "$CHECK" != 1 ]; then ln -sf "$PLASMA_ROOT/bin/wallp-plasma-daemon" "$HOME/.local/bin/wallp-plasma-daemon" 2>/dev/null || true; fi
+else
+    DAEMON_EXEC="/usr/bin/python3 $PROJ_ROOT/bin/wallp -d"
+    DAEMON_DESC="wallp - modo automático de wallpaper (legado, prefira wallp-plasma)"
+fi
 if [ "$CHECK" != 1 ]; then
     cat > "$UNIT_DIR/$UNIT" <<EOF
 [Unit]
-Description=wallp - modo automático de wallpaper
+Description=$DAEMON_DESC
 After=plasma-plasmashell.service
+PartOf=plasma-plasmashell.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 $PROJ_ROOT/bin/wallp -d
+ExecStart=$DAEMON_EXEC
 Restart=on-failure
 RestartSec=5
 
@@ -236,11 +275,15 @@ RestartSec=5
 WantedBy=default.target
 EOF
 fi
-if systemctl --user is-enabled "$UNIT" >/dev/null 2>&1; then ok "daemon habilitado"; else no "daemon não habilitado"; fi
+if systemctl --user is-enabled "$UNIT" >/dev/null 2>&1; then ok "daemon habilitado ($DAEMON_EXEC)"; else no "daemon não habilitado"; fi
 if [ "$CHECK" != 1 ]; then
     systemctl --user daemon-reload >/dev/null 2>&1 || true
     systemctl --user enable "$UNIT" >/dev/null 2>&1 || true
-    ok "daemon habilitado (inicia com o computador)"
+    ok "daemon habilitado (inicia com o computador) via ${DAEMON_EXEC}"
+    if [[ "$DAEMON_EXEC" == *"wallp-plasma"* ]] && [ -x "$PLASMA_ROOT/install.sh" ]; then
+        # delega instalação completa do daemon ao wallp-plasma (plasmóide já instalado acima)
+        bash "$PLASMA_ROOT/install.sh" -y >/dev/null 2>&1 || true
+    fi
 fi
 
 # ---------------------------------------------------------------- venv (opcional)
