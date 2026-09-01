@@ -103,6 +103,19 @@ if [ ! -f "$CFG" ]; then
 else
     ok "config já existe: $CFG"
 fi
+# pasta padrão do yml (~/Imagens/wallp) — cria se não existir
+if [ "$CHECK" != 1 ]; then
+    if have xdg-user-dir; then
+        _pics="$(xdg-user-dir PICTURES 2>/dev/null || echo "")"
+        if [ -z "$_pics" ] || [ "$_pics" = "$HOME" ]; then
+            if [ -d "$HOME/Imagens" ]; then _pics="$HOME/Imagens"; else _pics="$HOME/Pictures"; fi
+        fi
+    else
+        if [ -d "$HOME/Imagens" ]; then _pics="$HOME/Imagens"; else _pics="$HOME/Pictures"; fi
+    fi
+    mkdir -p "$_pics/wallp" 2>/dev/null || mkdir -p "$HOME/Imagens/wallp" 2>/dev/null || true
+    if [ -d "$_pics/wallp" ]; then ok "pasta padrão: $_pics/wallp"; else ok "pasta padrão: ~/Imagens/wallp"; fi
+fi
 
 # ---------------------------------------------------------------- daemon
 step "Daemon (systemd --user)"

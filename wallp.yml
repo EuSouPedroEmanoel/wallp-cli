@@ -28,38 +28,10 @@
 #   integro: true (opcional) — vídeo toca inteiro e avança; em diretório, tempo vira
 #            opcional e a troca é quando o vídeo termina (não pode com repetir)
 
-- nome: celeste
-  local: ~/Vídeos/Wallpaper/Celeste Animated Wallpaper - Farewell.mp4
-  hora: "8h-23h"
-
-- nome: outro
-  local: ~/Vídeos/Wallpaper/sem título.mp4
-  tempo: 2h
-
 - nome: padrao
-  local: ~/Vídeos/Wallpaper/sem título.mp4
-  default: true
-
-- nome: Pokemon
-  tempo: 30s
-  shuffled: true
+  type: diretório
+  local: ~/Imagens/wallp
+  tempo: 30m
   loop: true
-  list:
-    - nome: Snorlax
-      type: youtube
-      local: https://youtu.be/kuctuTR_cEM
-      repetir: true
-    - nome: Snorlax de Guarda-Chuva
-      type: youtube
-      local: https://youtu.be/ErCHK6hf_tk
-      repetir: true
-    - nome: Eevees
-      type: youtube
-      local: https://youtu.be/-0UKwtUlMBk
-      repetir: true
-
-- nome: casa automática
-  local: https://www.youtube.com/watch?v=aWzKb071D9o&list=PLD40851E0E52E9080
-  type: youtube-list
-  integro: true
   shuffled: true
+  default: true
