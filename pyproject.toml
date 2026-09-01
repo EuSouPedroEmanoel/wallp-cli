@@ -1,0 +1,28 @@
+[project]
+name = "wallp"
+version = "1.0.0"
+description = "Wallpaper animado/imagem no KDE Plasma com modo automático"
+requires-python = ">=3.10"
+dependencies = [
+    "dbus-python>=1.3",
+    "pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["wallp*"]
+
+[project.scripts]
+wallp = "wallp:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest (>=8.0.0,<10.0.0)"
+]

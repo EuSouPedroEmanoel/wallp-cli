@@ -1,0 +1,65 @@
+# wallp — agenda de wallpapers
+# cada item tem:
+#   nome:    nome (usado no `wallp -c <nome>`)
+#   local:   caminho do wallpaper (vídeo, imagem ou pasta com type: diretório)
+#   type:    diretório (opcional) — local é uma pasta; tempo = intervalo entre arquivos
+#   loop:    true/N/false (opcional) — diretório/lista: true cicla infinito, N cicla
+#            N vezes e termina, false mostra 1x; em vídeo/youtube: true trava o
+#            playback em loop infinito (não pode ter tempo junto)
+#   hora:    HH:MM, "9h", "9h30m" ou range "9h-10h" (opcional)
+#            sem range, exige a tag tempo (fim = início + tempo)
+#   tempo:   duração ativo: 30m, 2h, 1d, 1h30m10s (opcional)
+#   dia:     (opcional) só roda em dias específicos:
+#              seg|ter|qua|qui|sex|sab|dom  = toda semana nesse dia
+#              N (1-31)                      = todo dia N do mês (ex.: 15)
+#              DD-MM                         = todo ano nesse dia (ex.: 01-04)
+#              DD-MM-AAAA                    = só nesse dia (ex.: 20-12-2026)
+#            sem dia, vale todos os dias
+#   default: true (opcional) — o padrão, preenche os intervalos vazios.
+#            O -a exige um default global (sem dia), único; defaults com dia valem
+#            só no dia deles (o mais específico vence o global).
+#   No dia, sem hora: o mais específico roda primeiro (data > DD-MM > dia do mês >
+#   weekday > sem dia); se a rotação dele terminar sem loop, segue pro genérico,
+#   até o default global.
+#   repetir: true (opcional) — o vídeo repete a reprodução (loop de playback)
+#            até o tempo do item acabar (não ignora o tempo). Para travar um vídeo
+#            infinitamente use loop: true no vídeo (sem tempo).
+#   som: true/false (opcional) — vídeo com som (padrão false = mudo)
+#   integro: true (opcional) — vídeo toca inteiro e avança; em diretório, tempo vira
+#            opcional e a troca é quando o vídeo termina (não pode com repetir)
+
+- nome: celeste
+  local: ~/Vídeos/Wallpaper/Celeste Animated Wallpaper - Farewell.mp4
+  hora: "8h-23h"
+
+- nome: outro
+  local: ~/Vídeos/Wallpaper/sem título.mp4
+  tempo: 2h
+
+- nome: padrao
+  local: ~/Vídeos/Wallpaper/sem título.mp4
+  default: true
+
+- nome: Pokemon
+  tempo: 30s
+  shuffled: true
+  loop: true
+  list:
+    - nome: Snorlax
+      type: youtube
+      local: https://youtu.be/kuctuTR_cEM
+      repetir: true
+    - nome: Snorlax de Guarda-Chuva
+      type: youtube
+      local: https://youtu.be/ErCHK6hf_tk
+      repetir: true
+    - nome: Eevees
+      type: youtube
+      local: https://youtu.be/-0UKwtUlMBk
+      repetir: true
+
+- nome: casa automática
+  local: https://www.youtube.com/watch?v=aWzKb071D9o&list=PLD40851E0E52E9080
+  type: youtube-list
+  integro: true
+  shuffled: true

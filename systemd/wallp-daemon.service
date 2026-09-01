@@ -1,0 +1,12 @@
+[Unit]
+Description=wallp - modo automático de wallpaper
+After=plasma-plasmashell.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/pedro/dev/Verity/wallp/bin/wallp -d
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
