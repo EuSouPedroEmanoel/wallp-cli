@@ -1,0 +1,25 @@
+pkgbase = wallp-cli
+	pkgdesc = CLI para wallpaper animado/imagem no KDE Plasma (Smart Video Wallpaper Reborn) com modo automático por agenda
+	pkgver = 1.0.0
+	pkgrel = 1
+	url = https://github.com/EuSouPedroEmanoel/wallp-cli
+	arch = any
+	license = MIT
+	makedepends = python-build
+	makedepends = python-installer
+	makedepends = python-wheel
+	makedepends = python-setuptools
+	makedepends = git
+	depends = python
+	depends = python-dbus
+	depends = python-yaml
+	depends = qt6-multimedia
+	depends = qt6-multimedia-ffmpeg
+	depends = ffmpeg
+	optdepends = plasma6-wallpapers-smart-video-wallpaper-reborn: plasmoid Smart Video Wallpaper Reborn (recomendado)
+	optdepends = yt-dlp: suporte a wallpapers do YouTube (youtube / youtube-list)
+	optdepends = yay: instalação automática do plasmoid via install.sh
+	source = git+https://github.com/EuSouPedroEmanoel/wallp-cli.git#tag=v1.0.0
+	sha256sums = SKIP
+
+pkgname = wallp-cli

@@ -3,6 +3,32 @@
 CLI para trocar o wallpaper (animado ou imagem) do **KDE Plasma** usando o plasmoid
 **Smart Video Wallpaper Reborn**, com modo automático por agenda.
 
+[![Release](https://img.shields.io/github/v/release/EuSouPedroEmanoel/wallp-cli?label=Download&sort=semver)](https://github.com/EuSouPedroEmanoel/wallp-cli/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![AUR](https://img.shields.io/badge/AUR-wallp--cli-blue?logo=archlinux)](https://aur.archlinux.org/packages/wallp-cli)
+[![KDE Plasma 6](https://img.shields.io/badge/KDE-Plasma%206-1daee9?logo=kde)](https://kde.org/plasma-desktop/)
+
+## 📥 Download / Instalação rápida
+
+**Escolha uma das formas — todas deixam o sistema pronto para `wallp -a` / `wallp -r`:**
+
+| Método | Comando | Pronto para uso? |
+|---|---|---|
+| **curl – instalador remoto** (recomendado) | `curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh \| bash` <br> com `-y` sem perguntar: `curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh \| bash -s -- -y` | ✅ clona em `~/dev/wallp/wallp-cli`, roda `install.sh`, habilita daemon |
+| **AUR (Arch)** | `yay -S wallp-cli` <br> ou `yay -S wallp-cli-git` (último `master`) <br> depois: `systemctl --user enable --now wallp-daemon.service` | ✅ pacote `PKGBUILD:1` + systemd user |
+| **ZIP / TAR.GZ** (sem git) | Baixe o **[wallp-cli-1.0.0.zip](https://github.com/EuSouPedroEmanoel/wallp-cli/releases/latest/download/wallp-cli-1.0.0.zip)** ou **[wallp-cli-1.0.0.tar.gz](https://github.com/EuSouPedroEmanoel/wallp-cli/releases/latest/download/wallp-cli-1.0.0.tar.gz)** <br> `unzip wallp-cli-1.0.0.zip && cd wallp-cli && ./install.sh -y` | ✅ extrai e instala |
+| **git clone** | `git clone https://github.com/EuSouPedroEmanoel/wallp-cli.git ~/dev/wallp/wallp-cli && ~/dev/wallp/wallp-cli/install.sh -y` | ✅ |
+
+> O instalador (`install.sh` / `quick-install.sh`) já faz tudo: dependências Arch (`python-dbus`, `python-yaml`, `qt6-multimedia-ffmpeg`), plasmoid `plasma6-wallpapers-smart-video-wallpaper-reborn` via `yay`, link em `~/.local/bin/wallp`, config `~/.config/wallp/wallp.yml` e daemon `wallp-daemon.service`. Use `./install.sh --check` para só verificar.
+
+<details><summary>Detalhes do ZIP</summary>
+
+- Release `v1.0.0` em <https://github.com/EuSouPedroEmanoel/wallp-cli/releases/latest> contém `wallp-cli-1.0.0.zip` e `wallp-cli-1.0.0.tar.gz` (mesmo conteúdo do repo, sem `.git`).
+- Verificação: `unzip -l wallp-cli-1.0.0.zip | head`
+- Atualizar depois: `cd ~/dev/wallp/wallp-cli && git pull && ./install.sh` ou re-rodar o `curl` (ele faz `git pull` se já existe).
+
+</details>
+
 ## Requisitos
 
 - KDE Plasma 6 (Wayland/X11) com `plasmashell` rodando
