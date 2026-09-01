@@ -81,10 +81,32 @@ ask() {
     [ "${r,,}" = s ] || [ "${r,,}" = sim ]
 }
 
-run_pacman() {
-    if [ "$CHECK" = 1 ]; then return 0; fi
-    if ask; then sudo pacman -S --needed "$@"; else no "$*"; fi
+detect_pm() {
+    if have pacman; then echo "pacman"
+    elif have apt-get; then echo "apt"
+    elif have dnf; then echo "dnf"
+    elif have zypper; then echo "zypper"
+    elif have emerge; then echo "emerge"
+    else echo ""
+    fi
 }
+PM="$(detect_pm)"
+
+install_pkg() {
+    if [ "$CHECK" = 1 ]; then return 0; fi
+    if [ -z "$PM" ]; then no "$* (instale manualmente)"; return 1; fi
+    if ! ask; then no "$*"; return 1; fi
+    case "$PM" in
+        pacman) sudo pacman -S --needed "$@" ;;
+        apt) sudo apt-get update -qq 2>/dev/null; sudo apt-get install -y "$@" ;;
+        dnf) sudo dnf install -y "$@" ;;
+        zypper) sudo zypper install -y "$@" ;;
+        emerge) sudo emerge "$@" ;;
+        *) no "$* (gerenciador $PM não suportado)"; return 1 ;;
+    esac
+}
+
+run_pacman() { install_pkg "$@"; }
 
 # ---------------------------------------------------------------- python
 step "Python"
@@ -94,18 +116,52 @@ for mod in dbus yaml; do
     if python3 -c "import $mod" 2>/dev/null; then
         ok "python3:$mod"
     else
-        pkg="python-$mod"
-        [ "$mod" = yaml ] && pkg="python-yaml"
+        case "$PM" in
+            apt) pkg="python3-$mod"; [ "$mod" = yaml ] && pkg="python3-yaml" ;;
+            dnf|zypper) pkg="python3-$mod"; [ "$mod" = yaml ] && pkg="python3-pyyaml" ;;
+            *) pkg="python-$mod"; [ "$mod" = yaml ] && pkg="python-yaml" ;;
+        esac
         no "python3:$mod ($pkg)"
-        run_pacman "$pkg"
+        install_pkg "$pkg" || true
     fi
 done
 
 # ---------------------------------------------------------------- codecs
-step "Codecs de vídeo (qt6-multimedia)"
-for pkg in qt6-multimedia qt6-multimedia-ffmpeg; do
-    if pacman -Q "$pkg" >/dev/null 2>&1; then ok "$pkg"; else no "$pkg"; run_pacman "$pkg"; fi
-done
+step "Codecs de vídeo (qt6-multimedia) — KDE Plasma 6 em qualquer distro"
+if [ "$PM" = "pacman" ]; then
+    for pkg in qt6-multimedia qt6-multimedia-ffmpeg; do
+        if pacman -Q "$pkg" >/dev/null 2>&1; then ok "$pkg"; else no "$pkg"; install_pkg "$pkg" || true; fi
+    done
+elif [ "$PM" = "apt" ]; then
+    for pkg in qml6-module-qtmultimedia qt6-multimedia-dev gstreamer1.0-plugins-bad; do
+        if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then ok "$pkg"; else no "$pkg"; install_pkg "$pkg" || true; fi
+    done
+    # extra-cmake-modules para build do plasmóide (só build, pode remover depois)
+    if dpkg -l "extra-cmake-modules" 2>/dev/null | grep -q "^ii"; then ok "extra-cmake-modules"; else no "extra-cmake-modules"; install_pkg "extra-cmake-modules" || true; fi
+elif [ "$PM" = "dnf" ]; then
+    for pkg in qt6-qtmultimedia qt6-qtmultimedia-devel kf6-plasma; do
+        if rpm -q "$pkg" >/dev/null 2>&1; then ok "$pkg"; else no "$pkg"; install_pkg "$pkg" || true; fi
+    done
+    if rpm -q "extra-cmake-modules" >/dev/null 2>&1; then ok "extra-cmake-modules"; else no "extra-cmake-modules"; install_pkg "extra-cmake-modules" || true; fi
+elif [ "$PM" = "zypper" ]; then
+    for pkg in qt6-multimedia qt6-multimedia-ffmpeg kf6-plasma6; do
+        if rpm -q "$pkg" >/dev/null 2>&1; then ok "$pkg"; else no "$pkg"; install_pkg "$pkg" || true; fi
+    done
+    if rpm -q "extra-cmake-modules" >/dev/null 2>&1; then ok "extra-cmake-modules"; else no "extra-cmake-modules"; install_pkg "extra-cmake-modules" || true; fi
+else
+    for pkg in qt6-multimedia qt6-multimedia-ffmpeg; do
+        no "$pkg (instale manualmente para $PM)"; install_pkg "$pkg" || true
+    done
+    no "extra-cmake-modules (apenas build, pode remover depois)"; install_pkg "extra-cmake-modules" || true
+fi
+# verifica qt6-declarative (QML) — já vem com Plasma 6 na maioria das distros
+if [ "$PM" = "pacman" ]; then
+    if pacman -Q "qt6-declarative" >/dev/null 2>&1; then ok "qt6-declarative"; else no "qt6-declarative"; install_pkg "qt6-declarative" || true; fi
+elif [ "$PM" = "apt" ]; then
+    if dpkg -l "qml6-module-qtquick" 2>/dev/null | grep -q "^ii"; then ok "qml6-module-qtquick"; else no "qml6-module-qtquick"; install_pkg "qml6-module-qtquick" || true; fi
+elif [ "$PM" = "dnf" ] || [ "$PM" = "zypper" ]; then
+    if rpm -q "qt6-qtdeclarative" >/dev/null 2>&1; then ok "qt6-qtdeclarative"; else no "qt6-qtdeclarative"; install_pkg "qt6-qtdeclarative" || true; fi
+fi
 
 # ---------------------------------------------------------------- plasmoid
 step "Plasmoid wallp (com.wallp.wallpaper) unificado"
