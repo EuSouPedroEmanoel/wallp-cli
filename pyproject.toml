@@ -16,6 +16,9 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 include = ["wallp*"]
 
+[tool.setuptools.package-data]
+wallp = ["assets/*"]
+
 [project.scripts]
 wallp = "wallp:main"
 

@@ -115,6 +115,16 @@ if [ "$CHECK" != 1 ]; then
     fi
     mkdir -p "$_pics/wallp" 2>/dev/null || mkdir -p "$HOME/Imagens/wallp" 2>/dev/null || true
     if [ -d "$_pics/wallp" ]; then ok "pasta padrão: $_pics/wallp"; else ok "pasta padrão: ~/Imagens/wallp"; fi
+    # wallpaper padrão — copia se pasta estiver vazia (primeiro -a)
+    if [ -d "$_pics/wallp" ] && [ -z "$(ls -A "$_pics/wallp" 2>/dev/null)" ]; then
+        DEFAULT_SRC=""
+        if [ -f "$PROJ_ROOT/assets/wallpapers/default.jpg" ]; then DEFAULT_SRC="$PROJ_ROOT/assets/wallpapers/default.jpg"
+        elif [ -f "$PROJ_ROOT/src/wallp/assets/default.jpg" ]; then DEFAULT_SRC="$PROJ_ROOT/src/wallp/assets/default.jpg"
+        fi
+        if [ -n "$DEFAULT_SRC" ]; then
+            cp "$DEFAULT_SRC" "$_pics/wallp/" 2>/dev/null && ok "wallpaper padrão copiado para $_pics/wallp/ ($(basename "$DEFAULT_SRC"))"
+        fi
+    fi
 fi
 
 # ---------------------------------------------------------------- daemon
