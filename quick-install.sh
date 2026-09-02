@@ -1,33 +1,33 @@
 #!/usr/bin/env bash
-# wallp-cli — instalador remoto (para curl | bash)
+# wallpha-cli — instalador remoto (para curl | bash)
 # Sempre aponta para a última release estável por padrão (tarball), com suporte a --version.
 # Uso:
-#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh | bash -s -- -y
-#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh | bash -s -- --version 1.0.0
-#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh | bash -s -- --version 1.0.0 --git
-#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh | bash -s -- --bin
-#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh | bash -s -- --bin --version 1.0.3
-#   WALLP_VERSION=1.0.0 bash quick-install.sh -y
-#   WALLP_VERSION=v1.0.0 bash quick-install.sh --git -y
-#   bash <(curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallp-cli/master/quick-install.sh) --check
+#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- -y
+#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --version 1.0.0
+#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --version 1.0.0 --git
+#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --bin
+#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --bin --version 1.0.3
+#   WALLPHA_VERSION=1.0.0 bash quick-install.sh -y
+#   WALLPHA_VERSION=v1.0.0 bash quick-install.sh --git -y
+#   bash <(curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh) --check
 # Flags:
 #   --version <ver>  versão específica (ex.: 1.0.0, v1.0.0, latest, master, feat/native-backend)
 #   --git            força git clone --branch (útil para branches, permite git pull depois)
-#   --dev            instala em ~/dev/wallp/wallp-cli (dev) — padrão é ~/.local/share/wallp
-#   --bin            pacote mínimo wallp-cli-bin: sem capa, sem repo dev, wallpaper de ~/Imagens
+#   --dev            instala em ~/dev/wallpha/wallpha-cli (dev) — padrão é ~/.local/share/wallpha
+#   --bin            pacote mínimo wallpha-cli-bin: sem capa, sem repo dev, wallpaper de ~/Imagens
 #   --help           mostra ajuda
 # Env:
-#   WALLP_VERSION, WALLP_CLI_DIR, WALLP_BRANCH, XDG_DATA_HOME
+#   WALLPHA_VERSION, WALLPHA_CLI_DIR, WALLPHA_BRANCH, XDG_DATA_HOME
 set -euo pipefail
-REPO="https://github.com/EuSouPedroEmanoel/wallp-cli.git"
-# TARGET: dev (~/dev/wallp/wallp-cli) com --dev, senão XDG_DATA_HOME (~/.local/share/wallp) — sem deixar nada em ~/dev
+REPO="https://github.com/EuSouPedroEmanoel/wallpha-cli.git"
+# TARGET: dev (~/dev/wallpha/wallpha-cli) com --dev, senão XDG_DATA_HOME (~/.local/share/wallpha) — sem deixar nada em ~/dev
 XDG_DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
-WALLP_DATA_DEFAULT="$XDG_DATA/wallp"
-DEV_TARGET="$HOME/dev/wallp/wallp-cli"
-BRANCH_FALLBACK="${WALLP_BRANCH:-master}"
+WALLPHA_DATA_DEFAULT="$XDG_DATA/wallpha"
+DEV_TARGET="$HOME/dev/wallpha/wallpha-cli"
+BRANCH_FALLBACK="${WALLPHA_BRANCH:-master}"
 
-VERSION="${WALLP_VERSION:-}"
+VERSION="${WALLPHA_VERSION:-}"
 USE_GIT=0
 DEV_MODE=0
 BIN_MODE=0
@@ -49,22 +49,22 @@ while [[ $# -gt 0 ]]; do
       echo "uso: $0 [--version <ver>] [--git] [--dev] [--bin] [--check] [-y]"
       echo "  --version  versão (1.0.0, v1.0.0, latest, master, feat/native-backend)"
       echo "  --git      usa git clone --branch em vez de tarball (permite git pull)"
-      echo "  --dev      instala em ~/dev/wallp/wallp-cli (dev) — padrão é ~/.local/share/wallp"
-      echo "  --bin      pacote mínimo wallp-cli-bin: sem capa, wallpaper de ~/Imagens"
-      echo "  env WALLP_VERSION, WALLP_CLI_DIR, WALLP_BRANCH, XDG_DATA_HOME"
+      echo "  --dev      instala em ~/dev/wallpha/wallpha-cli (dev) — padrão é ~/.local/share/wallpha"
+      echo "  --bin      pacote mínimo wallpha-cli-bin: sem capa, wallpaper de ~/Imagens"
+      echo "  env WALLPHA_VERSION, WALLPHA_CLI_DIR, WALLPHA_BRANCH, XDG_DATA_HOME"
       exit 0 ;;
     *)
       INSTALL_ARGS+=("$1"); shift ;;
   esac
 done
 
-# TARGET respeita WALLP_CLI_DIR se usuário exportou, senão escolhe dev vs XDG
-if [ -n "${WALLP_CLI_DIR:-}" ]; then
-  TARGET="$WALLP_CLI_DIR"
+# TARGET respeita WALLPHA_CLI_DIR se usuário exportou, senão escolhe dev vs XDG
+if [ -n "${WALLPHA_CLI_DIR:-}" ]; then
+  TARGET="$WALLPHA_CLI_DIR"
 elif [ "$DEV_MODE" -eq 1 ]; then
   TARGET="$DEV_TARGET"
 else
-  TARGET="$WALLP_DATA_DEFAULT"
+  TARGET="$WALLPHA_DATA_DEFAULT"
 fi
 # propaga --dev/--bin para install.sh somente se ele suporta (compat com tarballs antigos v1.0.2)
 if [ "$DEV_MODE" -eq 1 ]; then
@@ -85,10 +85,10 @@ SCRIPT_DIR=""
 if [ -n "${BASH_SOURCE:-}" ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
 fi
-if [ -z "$VERSION" ] && [ "$USE_GIT" -eq 0 ] && [ "$WANTS_DEV" -eq 0 ] && [ "$WANTS_BIN" -eq 0 ] && [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/install.sh" ] && [ -d "$SCRIPT_DIR/src/wallp" ]; then
+if [ -z "$VERSION" ] && [ "$USE_GIT" -eq 0 ] && [ "$WANTS_DEV" -eq 0 ] && [ "$WANTS_BIN" -eq 0 ] && [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/install.sh" ] && [ -d "$SCRIPT_DIR/src/wallpha" ]; then
   exec "$SCRIPT_DIR/install.sh" "${INSTALL_ARGS[@]}"
 fi
-if [ -z "$VERSION" ] && [ "$USE_GIT" -eq 0 ] && [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/install.sh" ] && [ -d "$SCRIPT_DIR/src/wallp" ]; then
+if [ -z "$VERSION" ] && [ "$USE_GIT" -eq 0 ] && [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/install.sh" ] && [ -d "$SCRIPT_DIR/src/wallpha" ]; then
   if [ "$WANTS_DEV" -eq 1 ] && grep -q -- "--dev" "$SCRIPT_DIR/install.sh" 2>/dev/null; then
     if [ "$WANTS_BIN" -eq 1 ] && grep -q -- "--bin" "$SCRIPT_DIR/install.sh" 2>/dev/null; then
       exec "$SCRIPT_DIR/install.sh" --dev --bin "${INSTALL_ARGS[@]}"
@@ -104,10 +104,10 @@ fi
 resolve_latest_tag() {
   local tag=""
   if have curl; then
-    tag=$(curl -fsSL https://api.github.com/repos/EuSouPedroEmanoel/wallp-cli/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
+    tag=$(curl -fsSL https://api.github.com/repos/EuSouPedroEmanoel/wallpha-cli/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
   fi
   if [ -z "$tag" ] && have wget; then
-    tag=$(wget -qO- https://api.github.com/repos/EuSouPedroEmanoel/wallp-cli/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
+    tag=$(wget -qO- https://api.github.com/repos/EuSouPedroEmanoel/wallpha-cli/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
   fi
   echo "$tag"
 }
@@ -164,7 +164,7 @@ if [ "$USE_GIT" -eq 1 ] || [ "$is_branch" -eq 1 ]; then
     git -C "$TARGET" checkout -q "$GIT_BRANCH" 2>/dev/null || git -C "$TARGET" checkout -q master 2>/dev/null || true
     git -C "$TARGET" pull --ff-only --quiet 2>/dev/null || git -C "$TARGET" pull --rebase --quiet 2>/dev/null || true
   else
-    echo "==> Clonando wallp-cli $GIT_BRANCH em $TARGET via git..."
+    echo "==> Clonando wallpha-cli $GIT_BRANCH em $TARGET via git..."
     mkdir -p "$(dirname "$TARGET")"
     git clone --branch "$GIT_BRANCH" --depth 1 "$REPO" "$TARGET" 2>&1 | sed 's/^/  /' || {
       echo "falha no git clone de $GIT_BRANCH, tentando master..." >&2
@@ -181,37 +181,37 @@ fi
 # modo tarball (padrão, sem git, sem jq) — baixa release
 ASSET_VER="$VERSION_NOV"
 # auto-detecta bin/dev se já instalado e usuário não passou --bin/--dev explícito
-# usa .wallp-variant (criado pelo install.sh) — independe do yml que o user pode editar
+# usa .wallpha-variant (criado pelo install.sh) — independe do yml que o user pode editar
 if [ "$WANTS_BIN" -eq 0 ] && [ "$WANTS_DEV" -eq 0 ] && [ -d "$TARGET" ]; then
-  if [ -f "$TARGET/.wallp-variant" ]; then
-    case "$(cat "$TARGET/.wallp-variant" 2>/dev/null | tr -d '[:space:]')" in
+  if [ -f "$TARGET/.wallpha-variant" ]; then
+    case "$(cat "$TARGET/.wallpha-variant" 2>/dev/null | tr -d '[:space:]')" in
       bin) WANTS_BIN=1 ;;
       dev) WANTS_DEV=1 ;;
     esac
-  elif [ -f "$TARGET/wallp.yml" ]; then
-    # fallback para instalações antigas sem .wallp-variant (1.0.2): detecta via yml/assets
-    if grep -q 'local: ~/Imagens$' "$TARGET/wallp.yml" 2>/dev/null; then
+  elif [ -f "$TARGET/wallpha.yml" ]; then
+    # fallback para instalações antigas sem .wallpha-variant (1.0.2): detecta via yml/assets
+    if grep -q 'local: ~/Imagens$' "$TARGET/wallpha.yml" 2>/dev/null; then
       WANTS_BIN=1
-    elif [ ! -d "$TARGET/assets/wallpapers" ] && [ ! -d "$TARGET/src/wallp/assets" ] && grep -q 'local: ~/Imagens' "$TARGET/wallp.yml" 2>/dev/null; then
+    elif [ ! -d "$TARGET/assets/wallpapers" ] && [ ! -d "$TARGET/src/wallpha/assets" ] && grep -q 'local: ~/Imagens' "$TARGET/wallpha.yml" 2>/dev/null; then
       WANTS_BIN=1
     fi
   fi
-  # fallback final: sem assets e com conteúdo → bin (full sempre tem default-wallp.png)
-  if [ "$WANTS_BIN" -eq 0 ] && [ "$WANTS_DEV" -eq 0 ] && [ -d "$TARGET" ] && [ -n "$(ls -A "$TARGET" 2>/dev/null)" ] && [ ! -d "$TARGET/assets/wallpapers" ] && [ ! -d "$TARGET/src/wallp/assets" ] && [ -f "$TARGET/wallp.yml" ]; then
+  # fallback final: sem assets e com conteúdo → bin (full sempre tem default-wallpha.png)
+  if [ "$WANTS_BIN" -eq 0 ] && [ "$WANTS_DEV" -eq 0 ] && [ -d "$TARGET" ] && [ -n "$(ls -A "$TARGET" 2>/dev/null)" ] && [ ! -d "$TARGET/assets/wallpapers" ] && [ ! -d "$TARGET/src/wallpha/assets" ] && [ -f "$TARGET/wallpha.yml" ]; then
     WANTS_BIN=1
   fi
 fi
-# bin usa wallp-cli-bin, full usa wallp-cli
+# bin usa wallpha-cli-bin, full usa wallpha-cli
 if [ "$WANTS_BIN" -eq 1 ]; then
-  PKG_BASE="wallp-cli-bin"
+  PKG_BASE="wallpha-cli-bin"
 else
-  PKG_BASE="wallp-cli"
+  PKG_BASE="wallpha-cli"
 fi
-TARBALL_URL="https://github.com/EuSouPedroEmanoel/wallp-cli/releases/download/$TAG/${PKG_BASE}-$ASSET_VER.tar.gz"
-ZIP_URL="https://github.com/EuSouPedroEmanoel/wallp-cli/releases/download/$TAG/${PKG_BASE}-$ASSET_VER.zip"
-# fallback para wallp-cli se bin asset não existir (compat: bin ainda não tem release separada)
-TARBALL_FALLBACK="https://github.com/EuSouPedroEmanoel/wallp-cli/releases/download/$TAG/wallp-cli-$ASSET_VER.tar.gz"
-ZIP_FALLBACK="https://github.com/EuSouPedroEmanoel/wallp-cli/releases/download/$TAG/wallp-cli-$ASSET_VER.zip"
+TARBALL_URL="https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/download/$TAG/${PKG_BASE}-$ASSET_VER.tar.gz"
+ZIP_URL="https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/download/$TAG/${PKG_BASE}-$ASSET_VER.zip"
+# fallback para wallpha-cli se bin asset não existir (compat: bin ainda não tem release separada)
+TARBALL_FALLBACK="https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/download/$TAG/wallpha-cli-$ASSET_VER.tar.gz"
+ZIP_FALLBACK="https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/download/$TAG/wallpha-cli-$ASSET_VER.zip"
 
 echo "==> Baixando $PKG_BASE $TAG via tarball..."
 TMPDIR="$(mktemp -d)"
@@ -221,33 +221,33 @@ trap cleanup EXIT
 DL_OK=0
 DL_TARBALL=""
 if have curl; then
-  if curl -fsSL "$TARBALL_URL" -o "$TMPDIR/wallp.tar.gz" 2>/dev/null; then
+  if curl -fsSL "$TARBALL_URL" -o "$TMPDIR/wallpha.tar.gz" 2>/dev/null; then
     DL_OK=1; DL_TARBALL="$TARBALL_URL"
-  elif [ "$WANTS_BIN" -eq 1 ] && curl -fsSL "$TARBALL_FALLBACK" -o "$TMPDIR/wallp.tar.gz" 2>/dev/null; then
-    echo "  (bin asset não encontrado, usando wallp-cli fallback)"
+  elif [ "$WANTS_BIN" -eq 1 ] && curl -fsSL "$TARBALL_FALLBACK" -o "$TMPDIR/wallpha.tar.gz" 2>/dev/null; then
+    echo "  (bin asset não encontrado, usando wallpha-cli fallback)"
     DL_OK=1; DL_TARBALL="$TARBALL_FALLBACK"
-  elif curl -fsSL "$ZIP_URL" -o "$TMPDIR/wallp.zip" 2>/dev/null; then
+  elif curl -fsSL "$ZIP_URL" -o "$TMPDIR/wallpha.zip" 2>/dev/null; then
     # fallback zip se tar.gz não existir (ex.: conexão)
     if have unzip; then
       echo "  extraindo zip $ASSET_VER..."
-      unzip -q "$TMPDIR/wallp.zip" -d "$TMPDIR"
+      unzip -q "$TMPDIR/wallpha.zip" -d "$TMPDIR"
       DL_OK=2
     fi
-  elif [ "$WANTS_BIN" -eq 1 ] && curl -fsSL "$ZIP_FALLBACK" -o "$TMPDIR/wallp.zip" 2>/dev/null && have unzip; then
-    echo "  (bin asset não encontrado, usando wallp-cli fallback)"
-    unzip -q "$TMPDIR/wallp.zip" -d "$TMPDIR"
+  elif [ "$WANTS_BIN" -eq 1 ] && curl -fsSL "$ZIP_FALLBACK" -o "$TMPDIR/wallpha.zip" 2>/dev/null && have unzip; then
+    echo "  (bin asset não encontrado, usando wallpha-cli fallback)"
+    unzip -q "$TMPDIR/wallpha.zip" -d "$TMPDIR"
     DL_OK=2
   fi
 elif have wget; then
-  if wget -qO "$TMPDIR/wallp.tar.gz" "$TARBALL_URL" 2>/dev/null; then
+  if wget -qO "$TMPDIR/wallpha.tar.gz" "$TARBALL_URL" 2>/dev/null; then
     DL_OK=1; DL_TARBALL="$TARBALL_URL"
-  elif [ "$WANTS_BIN" -eq 1 ] && wget -qO "$TMPDIR/wallp.tar.gz" "$TARBALL_FALLBACK" 2>/dev/null; then
+  elif [ "$WANTS_BIN" -eq 1 ] && wget -qO "$TMPDIR/wallpha.tar.gz" "$TARBALL_FALLBACK" 2>/dev/null; then
     DL_OK=1; DL_TARBALL="$TARBALL_FALLBACK"
-  elif wget -qO "$TMPDIR/wallp.zip" "$ZIP_URL" 2>/dev/null && have unzip; then
-    unzip -q "$TMPDIR/wallp.zip" -d "$TMPDIR"
+  elif wget -qO "$TMPDIR/wallpha.zip" "$ZIP_URL" 2>/dev/null && have unzip; then
+    unzip -q "$TMPDIR/wallpha.zip" -d "$TMPDIR"
     DL_OK=2
-  elif [ "$WANTS_BIN" -eq 1 ] && wget -qO "$TMPDIR/wallp.zip" "$ZIP_FALLBACK" 2>/dev/null && have unzip; then
-    unzip -q "$TMPDIR/wallp.zip" -d "$TMPDIR"
+  elif [ "$WANTS_BIN" -eq 1 ] && wget -qO "$TMPDIR/wallpha.zip" "$ZIP_FALLBACK" 2>/dev/null && have unzip; then
+    unzip -q "$TMPDIR/wallpha.zip" -d "$TMPDIR"
     DL_OK=2
   fi
 else
@@ -257,19 +257,19 @@ fi
 
 if [ "$DL_OK" -eq 0 ]; then
   echo "erro: falha ao baixar $TARBALL_URL" >&2
-  echo "tente --git ou verifique a versão em https://github.com/EuSouPedroEmanoel/wallp-cli/releases" >&2
+  echo "tente --git ou verifique a versão em https://github.com/EuSouPedroEmanoel/wallpha-cli/releases" >&2
   exit 1
 fi
 
 if [ "$DL_OK" -eq 1 ]; then
   echo "  extraindo tar.gz $ASSET_VER..."
   mkdir -p "$TMPDIR/extract"
-  tar xzf "$TMPDIR/wallp.tar.gz" -C "$TMPDIR/extract" --strip-components=1 2>/dev/null || tar xzf "$TMPDIR/wallp.tar.gz" -C "$TMPDIR/extract" 2>/dev/null
+  tar xzf "$TMPDIR/wallpha.tar.gz" -C "$TMPDIR/extract" --strip-components=1 2>/dev/null || tar xzf "$TMPDIR/wallpha.tar.gz" -C "$TMPDIR/extract" 2>/dev/null
   EXTRACTED="$TMPDIR/extract"
 else
-  EXTRACTED="$(find "$TMPDIR" -maxdepth 2 -name "wallp-cli*-*" -type d | head -n1)"
+  EXTRACTED="$(find "$TMPDIR" -maxdepth 2 -name "wallpha-cli*-*" -type d | head -n1)"
   if [ -z "$EXTRACTED" ]; then
-    EXTRACTED="$(find "$TMPDIR" -maxdepth 2 -name "wallp-cli*" -type d | head -n1)"
+    EXTRACTED="$(find "$TMPDIR" -maxdepth 2 -name "wallpha-cli*" -type d | head -n1)"
   fi
   if [ -z "$EXTRACTED" ]; then
     EXTRACTED="$TMPDIR"

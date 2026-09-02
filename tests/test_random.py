@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from wallp import cli, config, state
+from wallpha import cli, config, state
 
 
 # ---------------------------------------------------------------- shuffle diário
@@ -27,8 +27,8 @@ def test_day_shuffled_muda_por_dia_e_por_salt():
 
 
 def test_get_salt_cria_e_reusa(tmp_path):
-    import wallp.paths as paths
-    import wallp.media as media
+    import wallpha.paths as paths
+    import wallpha.media as media
     paths.SALT_FILE = tmp_path / "shuffle.json"
     media.SALT_FILE = tmp_path / "shuffle.json"
     config.SALT_FILE = tmp_path / "shuffle.json"
@@ -64,8 +64,8 @@ def os_sep(name):
 # ---------------------------------------------------------------- shuffled no yml
 
 def test_normalize_shuffled(tmp_path):
-    import wallp.paths as paths
-    import wallp.media as media
+    import wallpha.paths as paths
+    import wallpha.media as media
     paths.SALT_FILE = tmp_path / "shuffle.json"
     media.SALT_FILE = tmp_path / "shuffle.json"
     config.SALT_FILE = tmp_path / "shuffle.json" 
@@ -131,86 +131,86 @@ def test_random_boundary_loop_reinicia():
 # ---------------------------------------------------------------- cli.parse
 
 def test_parse_n(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-n"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-n"])
     o = cli.parse()
     assert o["next"] and o["change"] is False
 
 
 def test_parse_log(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-log"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-log"])
     o = cli.parse()
     assert o["log"] is True and o["log_lines"] is None
 
 
 def test_parse_log_com_a(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-a", "Pokemon", "-log", "10"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-a", "Pokemon", "-log", "10"])
     o = cli.parse()
     assert o["auto"] and o["target"] == "Pokemon" and o["log"] is True and o["log_lines"] == 10
 
 
 def test_parse_log_valor(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-log", "10"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-log", "10"])
     o = cli.parse()
     assert o["log"] is True and o["log_lines"] == 10
 
 
 def test_parse_n_com_target_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-n", "celeste"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-n", "celeste"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_c_n_juntos_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-c", "-n"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "-n"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_r_m_q_l(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "~/x", "-t", "30m", "-m", "2h", "-q", "10", "-l", "true"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "~/x", "-t", "30m", "-m", "2h", "-q", "10", "-l", "true"])
     o = cli.parse()
     assert o["random"] and o["tempo"] == "30m" and o["max"] == "2h"
     assert o["qtd"] == "10" and o["loop"] == "true"
 
 
 def test_parse_valores_sem_r_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-n", "-q", "3"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-n", "-q", "3"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_c_aceita_valores(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-c", "lista", "-t", "30m", "-q", "3"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "lista", "-t", "30m", "-q", "3"])
     o = cli.parse()
     assert o["change"] and o["tempo"] == "30m" and o["qtd"] == "3"
 
 
 def test_parse_a_nao_aceita_valores(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-a", "-q", "3"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-a", "-q", "3"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_valor_sem_valor_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-l"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-l"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_r_sem_t(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r"])
     o = cli.parse()
     assert o["random"] and o["target"] is None and o["tempo"] is None
 
 
 def test_parse_t_sem_r_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-n", "-t", "30m"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-n", "-t", "30m"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_dois_modos_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-a"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-a"])
     with pytest.raises(SystemExit):
         cli.parse()
 
@@ -255,13 +255,13 @@ def test_state_pos(tmp_path, monkeypatch):
 # ---------------------------------------------------------------- repetir (-rep / yml)
 
 def test_parse_r_rep(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-rep", "-t", "10s"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-rep", "-t", "10s"])
     o = cli.parse()
     assert o["random"] and o["rep"] is True
 
 
 def test_parse_rep_sem_r_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-n", "-rep"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-n", "-rep"])
     with pytest.raises(SystemExit):
         cli.parse()
 
@@ -310,7 +310,7 @@ def test_advance_in_dir_cicla(tmp_path):
 # ---------------------------------------------------------------- video params loop
 
 def test_video_params_loop():
-    from wallp import apply as _apply
+    from wallpha import apply as _apply
 
     uri = "file:///tmp/v.mp4"
     p = _apply._video_params(uri, loop=True)
@@ -320,7 +320,7 @@ def test_video_params_loop():
 
 
 def test_video_params_som_integro():
-    from wallp import apply as _apply
+    from wallpha import apply as _apply
 
     p = _apply._video_params("file:///tmp/v.mp4", som=True, integro=False)
     assert p["MuteMode"] == 4 and p["Volume"] == 1.0 and "ChangeWallpaperMode" not in p
@@ -333,65 +333,65 @@ def test_video_params_som_integro():
 # ---------------------------------------------------------------- -i / -v / -int / -s
 
 def test_parse_i_v_int_s(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-i", "-s", "on", "-t", "10s"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-i", "-s", "on", "-t", "10s"])
     o = cli.parse()
     assert o["images"] and not o["videos"] and o["som"] == "on"
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-v", "-int"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-v", "-int"])
     o = cli.parse()
     assert o["videos"] and o["integro"]
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-s", "off"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-s", "off"])
     o = cli.parse()
     assert o["som"] == "off"
 
 
 def test_parse_i_v_juntos_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-i", "-v"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-i", "-v"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_int_sem_v_ok(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-int"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-int"])
     o = cli.parse()
     assert o["integro"] and not o["videos"]
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-i", "-int"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-i", "-int"])
     o = cli.parse()
     assert o["integro"] and o["images"]
 
 
 def test_parse_int_com_t_ok(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-v", "-int", "-t", "1m"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-v", "-int", "-t", "1m"])
     o = cli.parse()
     assert o["integro"] and o["tempo"] == "1m"
 
 
 def test_parse_int_com_rep_ok(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-v", "-int", "-rep"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-v", "-int", "-rep"])
     o = cli.parse()
     assert o["integro"] and o["rep"]
 
 
 def test_parse_s_invalido_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-r", "-s", "alto"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-r", "-s", "alto"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_valores_novos_sem_r_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-n", "-v"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-n", "-v"])
     with pytest.raises(SystemExit):
         cli.parse()
 
 
 def test_parse_y_implica_random(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-y", "https://youtu.be/abc", "-t", "30m", "-s", "on", "-l", "true"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-y", "https://youtu.be/abc", "-t", "30m", "-s", "on", "-l", "true"])
     o = cli.parse()
     assert o["random"] and o["yt"] == "https://youtu.be/abc"
     assert o["tempo"] == "30m" and o["som"] == "on" and o["loop"] == "true"
 
 
 def test_parse_y_sem_valor_erro(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-y"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-y"])
     with pytest.raises(SystemExit):
         cli.parse()
 

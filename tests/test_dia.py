@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta
 
 import pytest
 
-from wallp import config
+from wallpha import config
 
 # seg = 2026-08-17, ter = 2026-08-18, qua = 19, qui = 20, sex = 21, sab = 22, dom = 23
 MON = datetime(2026, 8, 17)
@@ -185,7 +185,7 @@ def mk(tmp_path, *nomes):
 # ---------------------------------------------------------------- erro de yml
 
 def test_load_checked_yml_invalido_retorna_none(monkeypatch):
-    import wallp.entries as entries_mod
+    import wallpha.entries as entries_mod
     monkeypatch.setattr(entries_mod, "load", lambda *a, **kw: entries_mod.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "dia": "foo", "tempo": "1h"}]))
     monkeypatch.setattr(config, "load", lambda *a, **kw: config.load_entries(
@@ -196,45 +196,45 @@ def test_load_checked_yml_invalido_retorna_none(monkeypatch):
 
 def test_c_dia_invalido_sai_limpo(monkeypatch, capsys):
     import sys
-    import wallp
-    import wallp.entries as entries_mod
-    monkeypatch.setattr(sys, "argv", ["wallp", "-c", "x"])
+    import wallpha
+    import wallpha.entries as entries_mod
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "x"])
     monkeypatch.setattr(entries_mod, "load", lambda *a, **kw: entries_mod.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "dia": "foo", "tempo": "1h"}]))
     monkeypatch.setattr(config, "load", lambda *a, **kw: config.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "dia": "foo", "tempo": "1h"}]))
     with pytest.raises(SystemExit) as ex:
-        wallp.main()
+        wallpha.main()
     assert ex.value.code == 1
     assert "dia inválido" in capsys.readouterr().err
 
 
 def test_c_yml_yaml_quebrado_sai_limpo(monkeypatch, capsys):
     import sys
-    import wallp
-    import wallp.entries as entries_mod
-    monkeypatch.setattr(sys, "argv", ["wallp", "-c", "x"])
+    import wallpha
+    import wallpha.entries as entries_mod
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "x"])
     monkeypatch.setattr(entries_mod, "load", lambda *a, **kw: (_ for _ in ()).throw(
         __import__("yaml").YAMLError("erro de sintaxe")))
     monkeypatch.setattr(config, "load", lambda *a, **kw: (_ for _ in ()).throw(
         __import__("yaml").YAMLError("erro de sintaxe")))
     with pytest.raises(SystemExit) as ex:
-        wallp.main()
+        wallpha.main()
     assert ex.value.code == 1
     assert "erro de sintaxe" in capsys.readouterr().err
 
 
 def test_daemon_schedule_yml_invalido_nao_crasha(monkeypatch):
-    from wallp import daemon, state
+    from wallpha import daemon, state
     monkeypatch.setattr(state, "is_on", lambda: True)
     monkeypatch.setattr(state, "get_random", lambda: None)
     monkeypatch.setattr(state, "get_list", lambda: None)
     monkeypatch.setattr(config, "load_checked", lambda: None)
-    import wallp.entries as _entries
+    import wallpha.entries as _entries
     monkeypatch.setattr(_entries, "load_checked", lambda *a, **kw: None)
-    import wallp.daemon_schedule as _ds
+    import wallpha.daemon_schedule as _ds
     monkeypatch.setattr(_ds.entries, "load_checked", lambda *a, **kw: None)
-    import wallp.daemon_list as _dl
+    import wallpha.daemon_list as _dl
     monkeypatch.setattr(_dl.entries, "load_checked", lambda *a, **kw: None)
     calls = {"n": 0}
 
@@ -250,14 +250,14 @@ def test_daemon_schedule_yml_invalido_nao_crasha(monkeypatch):
 
 
 def test_daemon_list_yml_invalido_nao_crasha(monkeypatch):
-    from wallp import daemon, state
+    from wallpha import daemon, state
     monkeypatch.setattr(state, "is_on", lambda: True)
     monkeypatch.setattr(state, "get_random", lambda: None)
     monkeypatch.setattr(state, "get_list", lambda: {"nome": "x"})
     monkeypatch.setattr(config, "load_checked", lambda: None)
-    import wallp.entries as _entries2
+    import wallpha.entries as _entries2
     monkeypatch.setattr(_entries2, "load_checked", lambda *a, **kw: None)
-    import wallp.daemon_list as _dl2
+    import wallpha.daemon_list as _dl2
     monkeypatch.setattr(_dl2.entries, "load_checked", lambda *a, **kw: None)
     calls = {"n": 0}
 
@@ -368,15 +368,15 @@ def test_default_com_dia_nao_conta_como_global():
 def test_a_sem_default_global_sai_limpo(monkeypatch, capsys):
     import sys
 
-    import wallp
-    monkeypatch.setattr(sys, "argv", ["wallp", "-a"])
-    import wallp.entries as entries_mod2
+    import wallpha
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-a"])
+    import wallpha.entries as entries_mod2
     monkeypatch.setattr(entries_mod2, "load", lambda *a, **kw: entries_mod2.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "tempo": "1h"}]))
     monkeypatch.setattr(config, "load", lambda *a, **kw: config.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "tempo": "1h"}]))
     with pytest.raises(SystemExit) as ex:
-        wallp.main()
+        wallpha.main()
     assert ex.value.code == 1
     assert "default global" in capsys.readouterr().err
 
@@ -384,15 +384,15 @@ def test_a_sem_default_global_sai_limpo(monkeypatch, capsys):
 def test_a_nome_sem_default_global_sai_limpo(monkeypatch, capsys):
     import sys
 
-    import wallp
-    monkeypatch.setattr(sys, "argv", ["wallp", "-a", "x"])
-    import wallp.entries as entries_mod3
+    import wallpha
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-a", "x"])
+    import wallpha.entries as entries_mod3
     monkeypatch.setattr(entries_mod3, "load", lambda *a, **kw: entries_mod3.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "tempo": "1h"}]))
     monkeypatch.setattr(config, "load", lambda *a, **kw: config.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "tempo": "1h"}]))
     with pytest.raises(SystemExit) as ex:
-        wallp.main()
+        wallpha.main()
     assert ex.value.code == 1
     assert "default global" in capsys.readouterr().err
 
@@ -400,21 +400,21 @@ def test_a_nome_sem_default_global_sai_limpo(monkeypatch, capsys):
 def test_a_com_default_global_passa(monkeypatch, capsys):
     import sys
 
-    import wallp
-    monkeypatch.setattr(sys, "argv", ["wallp", "-a"])
-    import wallp.entries as entries_mod4
+    import wallpha
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-a"])
+    import wallpha.entries as entries_mod4
     monkeypatch.setattr(entries_mod4, "load", lambda *a, **kw: entries_mod4.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "tempo": "1h"},
          {"nome": "d", "local": "/tmp/d.mp4", "default": True}]))
     monkeypatch.setattr(config, "load", lambda *a, **kw: config.load_entries(
         [{"nome": "x", "local": "/tmp/x.mp4", "tempo": "1h"},
          {"nome": "d", "local": "/tmp/d.mp4", "default": True}]))
-    monkeypatch.setattr(wallp, "_start_service", lambda: None)
-    from wallp import state as st
+    monkeypatch.setattr(wallpha, "_start_service", lambda: None)
+    from wallpha import state as st
     monkeypatch.setattr(st, "clear_list", lambda: None)
     monkeypatch.setattr(st, "clear_random", lambda: None)
     monkeypatch.setattr(st, "set_on", lambda v: None)
-    wallp.main()  # não deve levantar SystemExit
+    wallpha.main()  # não deve levantar SystemExit
 
 
 # ---------------------------------------------------------------- listas aninhadas + herança de dia

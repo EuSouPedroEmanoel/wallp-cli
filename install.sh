@@ -1,18 +1,67 @@
 #!/usr/bin/env bash
-# wallp — instalador/verificador.
-# Garante que o computador tem tudo para o wallp funcionar:
+# wallpha — instalador/verificador.
+# Garante que o computador tem tudo para o wallpha funcionar:
 # python3 + dbus/yaml, codecs de vídeo, o plasmoid Smart Video Wallpaper Reborn,
-# o binário em ~/.local/bin, o config ~/.config/wallp/wallp.yml e o daemon systemd.
+# o binário em ~/.local/bin, o config ~/.config/wallpha/wallpha.yml e o daemon systemd.
 #
 # Uso:  ./install.sh [-y|--yes] [--check] [--dev] [--bin]
 #   -y      instala dependências faltando sem perguntar (usa sudo / yay)
 #   --check só verifica, não altera nada
-#   --dev   modo desenvolvimento: mantém código em ~/dev/wallp/wallp-cli (symlink),
-#           padrão sem --dev instala em ~/.local/share/wallp (XDG, sem deixar nada em ~/dev)
-#   --bin   pacote mínimo wallp-cli-bin: sem capa padrão, sem repo dev,
-#           wallpaper padrão pego de ~/Imagens (não ~/Imagens/wallp), sem copiar wallpapers
+#   --dev   modo desenvolvimento: mantém código em ~/dev/wallpha/wallpha-cli (symlink),
+#           padrão sem --dev instala em ~/.local/share/wallpha (XDG, sem deixar nada em ~/dev)
+#   --bin   pacote mínimo wallpha-cli-bin: sem capa padrão, sem repo dev,
+#           wallpaper padrão pego de ~/Imagens (não ~/Imagens/wallpha), sem copiar wallpapers
 
 set -euo pipefail
+
+# ---------------------------------------------------------------- migração wallp → wallpha (v2.0.0 compat, remove em 3.0)
+if [ "${WALLPHA_SKIP_MIGRATION:-0}" != 1 ]; then
+    # config
+    if [ -d "$HOME/.config/wallp" ] && [ ! -d "$HOME/.config/wallpha" ]; then
+        cp -a "$HOME/.config/wallp" "$HOME/.config/wallpha" 2>/dev/null || true
+        echo "  (migração: ~/.config/wallp → ~/.config/wallpha)"
+    fi
+    if [ -f "$HOME/.config/wallp/wallp.yml" ] && [ ! -f "$HOME/.config/wallpha/wallpha.yml" ]; then
+        mkdir -p "$HOME/.config/wallpha" 2>/dev/null || true
+        cp -a "$HOME/.config/wallp/wallp.yml" "$HOME/.config/wallpha/wallpha.yml" 2>/dev/null || true
+    fi
+    if [ -f "$HOME/.config/wallpha/wallpha.yml" ]; then
+        # atualiza path antigo dentro do yml se ainda apontar para ~/Imagens/wallp
+        sed -i 's|~/Imagens/wallp|~/Imagens/wallpha|g' "$HOME/.config/wallpha/wallpha.yml" 2>/dev/null || true
+    fi
+    if [ -f "$HOME/.config/wallpha/wallp.yml" ] && [ ! -f "$HOME/.config/wallpha/wallpha.yml" ]; then
+        mv "$HOME/.config/wallpha/wallp.yml" "$HOME/.config/wallpha/wallpha.yml" 2>/dev/null || true
+    fi
+    # state
+    if [ -d "$HOME/.local/state/wallp" ] && [ ! -d "$HOME/.local/state/wallpha" ]; then
+        cp -a "$HOME/.local/state/wallp" "$HOME/.local/state/wallpha" 2>/dev/null || true
+        echo "  (migração: ~/.local/state/wallp → ~/.local/state/wallpha)"
+    fi
+    # share
+    if [ -d "$HOME/.local/share/wallp" ] && [ ! -d "$HOME/.local/share/wallpha" ]; then
+        cp -a "$HOME/.local/share/wallp" "$HOME/.local/share/wallpha" 2>/dev/null || true
+        echo "  (migração: ~/.local/share/wallp → ~/.local/share/wallpha)"
+    fi
+    if [ -d "$HOME/.local/share/wallp-plasma" ] && [ ! -d "$HOME/.local/share/wallpha-plasma" ]; then
+        cp -a "$HOME/.local/share/wallp-plasma" "$HOME/.local/share/wallpha-plasma" 2>/dev/null || true
+    fi
+    # wallpapers dir
+    if [ -d "$HOME/Imagens/wallp" ] && [ ! -d "$HOME/Imagens/wallpha" ]; then
+        mv "$HOME/Imagens/wallp" "$HOME/Imagens/wallpha" 2>/dev/null || cp -a "$HOME/Imagens/wallp" "$HOME/Imagens/wallpha" 2>/dev/null || true
+        echo "  (migração: ~/Imagens/wallp → ~/Imagens/wallpha)"
+    elif [ -d "$HOME/Imagens/wallp" ] && [ -d "$HOME/Imagens/wallpha" ]; then
+        # copia faltantes sem sobrescrever
+        cp -an "$HOME/Imagens/wallp"/* "$HOME/Imagens/wallpha"/ 2>/dev/null || true
+    fi
+    if [ -f "$HOME/Imagens/wallpha/default-wallp.png" ] && [ ! -f "$HOME/Imagens/wallpha/default-wallpha.png" ]; then
+        mv "$HOME/Imagens/wallpha/default-wallp.png" "$HOME/Imagens/wallpha/default-wallpha.png" 2>/dev/null || true
+    fi
+    # systemd old unit
+    if [ -f "$HOME/.config/systemd/user/wallp-daemon.service" ] && [ ! -f "$HOME/.config/systemd/user/wallpha-daemon.service" ]; then
+        cp -a "$HOME/.config/systemd/user/wallp-daemon.service" "$HOME/.config/systemd/user/wallpha-daemon.service" 2>/dev/null || true
+        systemctl --user disable wallp-daemon.service 2>/dev/null || true
+    fi
+fi
 
 PROJ_ROOT="$(cd "$(dirname "$0")" && pwd)"
 YES=0
@@ -29,24 +78,24 @@ for a in "$@"; do
     esac
 done
 
-# auto-detect dev: se já está em ~/dev/wallp/* com .git, assume --dev mesmo sem flag
-if [ "$DEV" -eq 0 ] && [[ "$PROJ_ROOT" == "$HOME/dev/wallp"* ]] && [ -d "$PROJ_ROOT/.git" ]; then
+# auto-detect dev: se já está em ~/dev/wallpha/* com .git, assume --dev mesmo sem flag
+if [ "$DEV" -eq 0 ] && [[ "$PROJ_ROOT" == "$HOME/dev/wallpha"* ]] && [ -d "$PROJ_ROOT/.git" ]; then
     DEV=1
 fi
 
-# destino da instalação: dev (~/dev) ou XDG_DATA_HOME (~/.local/share/wallp)
+# destino da instalação: dev (~/dev) ou XDG_DATA_HOME (~/.local/share/wallpha)
 XDG_DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
-WALLP_DATA="$XDG_DATA/wallp"
+WALLPHA_DATA="$XDG_DATA/wallpha"
 if [ "$DEV" -eq 1 ]; then
     INSTALL_ROOT="$PROJ_ROOT"
 else
-    INSTALL_ROOT="$WALLP_DATA"
-    # se PROJ_ROOT já é o destino (ex.: já instalado via quick-install tarball em ~/.local/share/wallp), não copia
+    INSTALL_ROOT="$WALLPHA_DATA"
+    # se PROJ_ROOT já é o destino (ex.: já instalado via quick-install tarball em ~/.local/share/wallpha), não copia
     if [ "$PROJ_ROOT" != "$INSTALL_ROOT" ] && [ "$CHECK" != 1 ]; then
         mkdir -p "$INSTALL_ROOT"
-        # copia arquivos essenciais para rodar wallp a partir de ~/.local/share/wallp
-        # wallp.yml não fica no repo (só wallp.yml.example), é gerado direto em ~/.config
-        for item in bin src assets pyproject.toml wallp_cli.py wallp.yml.example; do
+        # copia arquivos essenciais para rodar wallpha a partir de ~/.local/share/wallpha
+        # wallpha.yml não fica no repo (só wallpha.yml.example), é gerado direto em ~/.config
+        for item in bin src assets pyproject.toml wallpha_cli.py wallpha.yml.example; do
             if [ -e "$PROJ_ROOT/$item" ]; then
                 cp -a "$PROJ_ROOT/$item" "$INSTALL_ROOT/" 2>/dev/null || true
             fi
@@ -61,11 +110,11 @@ fi
 if [ "$CHECK" != 1 ]; then
     mkdir -p "$INSTALL_ROOT" 2>/dev/null || true
     if [ "$BIN" -eq 1 ]; then
-        echo "bin" > "$INSTALL_ROOT/.wallp-variant" 2>/dev/null || true
+        echo "bin" > "$INSTALL_ROOT/.wallpha-variant" 2>/dev/null || true
     elif [ "$DEV" -eq 1 ]; then
-        echo "dev" > "$INSTALL_ROOT/.wallp-variant" 2>/dev/null || true
+        echo "dev" > "$INSTALL_ROOT/.wallpha-variant" 2>/dev/null || true
     else
-        echo "full" > "$INSTALL_ROOT/.wallp-variant" 2>/dev/null || true
+        echo "full" > "$INSTALL_ROOT/.wallpha-variant" 2>/dev/null || true
     fi
 fi
 
@@ -164,13 +213,13 @@ elif [ "$PM" = "dnf" ] || [ "$PM" = "zypper" ]; then
 fi
 
 # ---------------------------------------------------------------- plasmoid
-step "Plasmoid wallp (com.wallp.wallpaper) unificado"
-PLASMOID="com.wallp.wallpaper"
+step "Plasmoid wallpha (com.wallpha.wallpaper) unificado"
+PLASMOID="com.wallpha.wallpaper"
 PLASMOID_LEGACY="luisbocanegra.smart.video.wallpaper.reborn"
-# tenta instalar o novo plasmóide a partir de ../plasma-wallpaper-wallp se existir (dev)
-PLASMOID_SRC="$PROJ_ROOT/../wallp-plasma"
+# tenta instalar o novo plasmóide a partir de ../plasma-wallpaper-wallpha se existir (dev)
+PLASMOID_SRC="$PROJ_ROOT/../wallpha-plasma"
 if [ ! -d "$PLASMOID_SRC" ]; then
-    PLASMOID_SRC="$HOME/dev/wallp/wallp-plasma"
+    PLASMOID_SRC="$HOME/dev/wallpha/wallpha-plasma"
 fi
 if [ -d "/usr/share/plasma/wallpapers/$PLASMOID" ] || [ -d "$HOME/.local/share/plasma/wallpapers/$PLASMOID" ]; then
     ok "plasmoid $PLASMOID"
@@ -196,7 +245,7 @@ else
             if [ "$CHECK" = 1 ]; then ok "yay disponível (instale com: yay -S plasma6-wallpapers-smart-video-wallpaper-reborn ou instale $PLASMOID de $PLASMOID_SRC)"; else
             if ask; then
                 # tenta novo plasmóide via AUR futuro, cai para legado
-                if yay -S --needed wallp-plasma 2>/dev/null || yay -S --needed plasma6-wallpapers-wallp 2>/dev/null; then
+                if yay -S --needed wallpha-plasma 2>/dev/null || yay -S --needed plasma6-wallpapers-wallpha 2>/dev/null; then
                     ok "plasmoid $PLASMOID instalado via yay"
                 else
                     yay -S --needed plasma6-wallpapers-smart-video-wallpaper-reborn && ok "plasmoid $PLASMOID_LEGACY instalado via yay (legado)"
@@ -206,31 +255,31 @@ else
             no "yay (instale o plasmoid manualmente: $PLASMOID_SRC ou AUR plasma6-wallpapers-smart-video-wallpaper-reborn)"
         fi
     fi
-    # auto-baixa wallp-plasma via tarball se ainda não instalado (sem depender de yay/dev)
+    # auto-baixa wallpha-plasma via tarball se ainda não instalado (sem depender de yay/dev)
     if [ ! -d "/usr/share/plasma/wallpapers/$PLASMOID" ] && [ ! -d "$HOME/.local/share/plasma/wallpapers/$PLASMOID" ] && [ ! -d "$PLASMOID_SRC/contents" ]; then
         if [ "$CHECK" = 1 ]; then
-            no "wallp-plasma não instalado (seria baixado via GitHub releases)"
+            no "wallpha-plasma não instalado (seria baixado via GitHub releases)"
         else
             if have curl || have wget; then
                 PLASMA_TAG="v1.0.0"
                 PLASMA_VER="1.0.0"
                 # tenta latest via GitHub API
                 if have curl; then
-                    LATEST_TAG=$(curl -fsSL https://api.github.com/repos/EuSouPedroEmanoel/wallp-plasma/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
+                    LATEST_TAG=$(curl -fsSL https://api.github.com/repos/EuSouPedroEmanoel/wallpha-plasma/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
                     if [ -n "$LATEST_TAG" ]; then PLASMA_TAG="$LATEST_TAG"; PLASMA_VER="${LATEST_TAG#v}"; fi
                 elif have wget; then
-                    LATEST_TAG=$(wget -qO- https://api.github.com/repos/EuSouPedroEmanoel/wallp-plasma/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
+                    LATEST_TAG=$(wget -qO- https://api.github.com/repos/EuSouPedroEmanoel/wallpha-plasma/releases/latest 2>/dev/null | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 || true)
                     if [ -n "$LATEST_TAG" ]; then PLASMA_TAG="$LATEST_TAG"; PLASMA_VER="${LATEST_TAG#v}"; fi
                 fi
-                TARBALL_URL="https://github.com/EuSouPedroEmanoel/wallp-plasma/releases/download/$PLASMA_TAG/wallp-plasma-$PLASMA_VER.tar.gz"
+                TARBALL_URL="https://github.com/EuSouPedroEmanoel/wallpha-plasma/releases/download/$PLASMA_TAG/wallpha-plasma-$PLASMA_VER.tar.gz"
                 TMPDIR_PLASMA="$(mktemp -d)"
-                PLASMA_DEST="$HOME/.local/share/wallp-plasma"
-                echo "  Baixando wallp-plasma $PLASMA_TAG via tarball..."
+                PLASMA_DEST="$HOME/.local/share/wallpha-plasma"
+                echo "  Baixando wallpha-plasma $PLASMA_TAG via tarball..."
                 DL_OK=0
                 if have curl; then
-                    if curl -fsSL "$TARBALL_URL" -o "$TMPDIR_PLASMA/wallp-plasma.tar.gz" 2>/dev/null; then DL_OK=1; fi
+                    if curl -fsSL "$TARBALL_URL" -o "$TMPDIR_PLASMA/wallpha-plasma.tar.gz" 2>/dev/null; then DL_OK=1; fi
                 elif have wget; then
-                    if wget -qO "$TMPDIR_PLASMA/wallp-plasma.tar.gz" "$TARBALL_URL" 2>/dev/null; then DL_OK=1; fi
+                    if wget -qO "$TMPDIR_PLASMA/wallpha-plasma.tar.gz" "$TARBALL_URL" 2>/dev/null; then DL_OK=1; fi
                 fi
                 if [ "$DL_OK" = 1 ]; then
                     mkdir -p "$PLASMA_DEST"
@@ -241,14 +290,14 @@ else
                         rm -rf "$PLASMA_DEST" 2>/dev/null || true
                         mkdir -p "$PLASMA_DEST"
                     fi
-                    if tar xzf "$TMPDIR_PLASMA/wallp-plasma.tar.gz" -C "$PLASMA_DEST" --strip-components=1 2>/dev/null || tar xzf "$TMPDIR_PLASMA/wallp-plasma.tar.gz" -C "$PLASMA_DEST" 2>/dev/null; then
+                    if tar xzf "$TMPDIR_PLASMA/wallpha-plasma.tar.gz" -C "$PLASMA_DEST" --strip-components=1 2>/dev/null || tar xzf "$TMPDIR_PLASMA/wallpha-plasma.tar.gz" -C "$PLASMA_DEST" 2>/dev/null; then
                         if [ -x "$PLASMA_DEST/install.sh" ]; then
-                            bash "$PLASMA_DEST/install.sh" -y >/dev/null 2>&1 && ok "plasmoid $PLASMOID instalado via tarball $PLASMA_TAG em $PLASMA_DEST" || no "falha ao instalar wallp-plasma via tarball"
+                            bash "$PLASMA_DEST/install.sh" -y >/dev/null 2>&1 && ok "plasmoid $PLASMOID instalado via tarball $PLASMA_TAG em $PLASMA_DEST" || no "falha ao instalar wallpha-plasma via tarball"
                         else
-                            no "wallp-plasma tarball sem install.sh"
+                            no "wallpha-plasma tarball sem install.sh"
                         fi
                     else
-                        no "falha ao extrair wallp-plasma tarball"
+                        no "falha ao extrair wallpha-plasma tarball"
                     fi
                 else
                     no "falha ao baixar $TARBALL_URL"
@@ -259,7 +308,7 @@ else
                     PLASMOID_SRC="$HOME/.local/share/plasma/wallpapers/$PLASMOID"
                 fi
             else
-                no "curl/wget necessário para baixar wallp-plasma (ou instale via --dev / yay)"
+                no "curl/wget necessário para baixar wallpha-plasma (ou instale via --dev / yay)"
             fi
         fi
     fi
@@ -270,25 +319,27 @@ step "Plasmashell"
 if pgrep -x plasmashell >/dev/null 2>&1; then ok "plasmashell rodando"; else no "plasmashell (sessão headless? o daemon vai fechar sozinho)"; fi
 
 # ---------------------------------------------------------------- bin
-step "Binário (~/.local/bin/wallp)"
+step "Binário (~/.local/bin/wallpha)"
 mkdir -p "$HOME/.local/bin"
-ln -sf "$PROJ_ROOT/bin/wallp" "$HOME/.local/bin/wallp"
-if [ -x "$HOME/.local/bin/wallp" ]; then ok "wallp -> $HOME/.local/bin/wallp"; else no "wallp em ~/.local/bin"; fi
+ln -sf "$PROJ_ROOT/bin/wallpha" "$HOME/.local/bin/wallpha"
+# compat wallp → wallpha por 1 release (remove em 3.0)
+ln -sf "$HOME/.local/bin/wallpha" "$HOME/.local/bin/wallp" 2>/dev/null || true
+if [ -x "$HOME/.local/bin/wallpha" ]; then ok "wallpha -> $HOME/.local/bin/wallpha (compat wallp)"; else no "wallpha em ~/.local/bin"; fi
 case ":$PATH:" in
     *":$HOME/.local/bin:"*) ok "~/.local/bin no PATH" ;;
     *) no "~/.local/bin fora do PATH (adicione: export PATH=\$HOME/.local/bin:\$PATH)" ;;
 esac
 
 # ---------------------------------------------------------------- config
-step "Configuração (~/.config/wallp/wallp.yml)"
-CFG="$HOME/.config/wallp/wallp.yml"
+step "Configuração (~/.config/wallpha/wallpha.yml)"
+CFG="$HOME/.config/wallpha/wallpha.yml"
 if [ ! -f "$CFG" ]; then
     if [ "$CHECK" = 1 ]; then no "config $CFG"; else
         mkdir -p "$(dirname "$CFG")"
-        # só wallp.yml.example fica no repo; wallp.yml é gerado direto em ~/.config
+        # só wallpha.yml.example fica no repo; wallpha.yml é gerado direto em ~/.config
         if [ "$BIN" -eq 1 ]; then
             cat > "$CFG" <<'YML'
-# wallp — agenda de wallpapers (gerado: bin minimal)
+# wallpha — agenda de wallpapers (gerado: bin minimal)
 - nome: padrao
   type: diretório
   local: ~/Imagens
@@ -300,16 +351,16 @@ YML
             ok "config criado: $CFG (bin: ~/Imagens)"
         else
             cat > "$CFG" <<'YML'
-# wallp — agenda de wallpapers (gerado pelo install.sh)
+# wallpha — agenda de wallpapers (gerado pelo install.sh)
 - nome: padrao
   type: diretório
-  local: ~/Imagens/wallp
+  local: ~/Imagens/wallpha
   tempo: 30s
   loop: true
   shuffled: true
   default: true
 YML
-            ok "config criado: $CFG (full: ~/Imagens/wallp)"
+            ok "config criado: $CFG (full: ~/Imagens/wallpha)"
         fi
     fi
 else
@@ -318,7 +369,7 @@ fi
 # pasta padrão do yml — cria se não existir
 if [ "$CHECK" != 1 ]; then
     if [ "$BIN" -eq 1 ]; then
-        # bin: wallpaper padrão é ~/Imagens direto, sem subpasta wallp, sem capa
+        # bin: wallpaper padrão é ~/Imagens direto, sem subpasta wallpha, sem capa
         if have xdg-user-dir; then
             _pics="$(xdg-user-dir PICTURES 2>/dev/null || echo "")"
             if [ -z "$_pics" ] || [ "$_pics" = "$HOME" ]; then
@@ -331,7 +382,7 @@ if [ "$CHECK" != 1 ]; then
         if [ -d "$_pics" ]; then ok "pasta padrão (bin): $_pics"; else ok "pasta padrão (bin): ~/Imagens"; fi
         # bin não copia capa padrão — usa o que já está em ~/Imagens
     else
-        # full: ~/Imagens/wallp com capa padrão
+        # full: ~/Imagens/wallpha com capa padrão
         if have xdg-user-dir; then
             _pics="$(xdg-user-dir PICTURES 2>/dev/null || echo "")"
             if [ -z "$_pics" ] || [ "$_pics" = "$HOME" ]; then
@@ -340,42 +391,42 @@ if [ "$CHECK" != 1 ]; then
         else
             if [ -d "$HOME/Imagens" ]; then _pics="$HOME/Imagens"; else _pics="$HOME/Pictures"; fi
         fi
-        mkdir -p "$_pics/wallp" 2>/dev/null || mkdir -p "$HOME/Imagens/wallp" 2>/dev/null || true
-        if [ -d "$_pics/wallp" ]; then ok "pasta padrão: $_pics/wallp"; else ok "pasta padrão: ~/Imagens/wallp"; fi
+        mkdir -p "$_pics/wallpha" 2>/dev/null || mkdir -p "$HOME/Imagens/wallpha" 2>/dev/null || true
+        if [ -d "$_pics/wallpha" ]; then ok "pasta padrão: $_pics/wallpha"; else ok "pasta padrão: ~/Imagens/wallpha"; fi
         # wallpapers padrão — copia se pasta estiver vazia (primeiro -a)
-        if [ -d "$_pics/wallp" ] && [ -z "$(ls -A "$_pics/wallp" 2>/dev/null)" ]; then
+        if [ -d "$_pics/wallpha" ] && [ -z "$(ls -A "$_pics/wallpha" 2>/dev/null)" ]; then
             SRC_DIR=""
             if [ -d "$PROJ_ROOT/assets/wallpapers" ]; then SRC_DIR="$PROJ_ROOT/assets/wallpapers"
-            elif [ -d "$PROJ_ROOT/src/wallp/assets" ]; then SRC_DIR="$PROJ_ROOT/src/wallp/assets"
+            elif [ -d "$PROJ_ROOT/src/wallpha/assets" ]; then SRC_DIR="$PROJ_ROOT/src/wallpha/assets"
             fi
             if [ -n "$SRC_DIR" ] && [ -n "$(ls -A "$SRC_DIR" 2>/dev/null)" ]; then
-                cp "$SRC_DIR"/* "$_pics/wallp/" 2>/dev/null && ok "wallpapers padrão copiados para $_pics/wallp/ ($(ls -1 "$_pics/wallp" 2>/dev/null | wc -l) imagens)"
+                cp "$SRC_DIR"/* "$_pics/wallpha/" 2>/dev/null && ok "wallpapers padrão copiados para $_pics/wallpha/ ($(ls -1 "$_pics/wallpha" 2>/dev/null | wc -l) imagens)"
             fi
         fi
     fi
 fi
 
-# ---------------------------------------------------------------- daemon (migrado para wallp-plasma)
-step "Daemon (systemd --user) — canônico em wallp-plasma"
-UNIT="wallp-daemon.service"
+# ---------------------------------------------------------------- daemon (migrado para wallpha-plasma)
+step "Daemon (systemd --user) — canônico em wallpha-plasma"
+UNIT="wallpha-daemon.service"
 UNIT_DIR="$HOME/.config/systemd/user"
 mkdir -p "$UNIT_DIR"
-# daemon agora é de wallp-plasma; este install delega se wallp-plasma existir
-PLASMA_ROOT="$HOME/dev/wallp/wallp-plasma"
-if [ -d "$PLASMA_ROOT/bin" ] && [ -f "$PLASMA_ROOT/bin/wallp-plasma-daemon" ]; then
-    DAEMON_EXEC="$HOME/.local/bin/wallp-plasma-daemon"
-    DAEMON_DESC="wallp-plasma — daemon de wallpaper (agenda + com.wallp.wallpaper)"
+# daemon agora é de wallpha-plasma; este install delega se wallpha-plasma existir
+PLASMA_ROOT="$HOME/dev/wallpha/wallpha-plasma"
+if [ -d "$PLASMA_ROOT/bin" ] && [ -f "$PLASMA_ROOT/bin/wallpha-plasma-daemon" ]; then
+    DAEMON_EXEC="$HOME/.local/bin/wallpha-plasma-daemon"
+    DAEMON_DESC="wallpha-plasma — daemon de wallpaper (agenda + com.wallpha.wallpaper)"
     # garante bin linkado
-    if [ "$CHECK" != 1 ]; then ln -sf "$PLASMA_ROOT/bin/wallp-plasma-daemon" "$HOME/.local/bin/wallp-plasma-daemon" 2>/dev/null || true; fi
-elif [ -x "$HOME/.local/bin/wallp-plasma-daemon" ]; then
-    DAEMON_EXEC="$HOME/.local/bin/wallp-plasma-daemon"
-    DAEMON_DESC="wallp-plasma — daemon de wallpaper (agenda + com.wallp.wallpaper)"
-elif [ -x "/usr/local/bin/wallp-plasma-daemon" ] || [ -x "/usr/bin/wallp-plasma-daemon" ]; then
-    if [ -x "/usr/local/bin/wallp-plasma-daemon" ]; then DAEMON_EXEC="/usr/local/bin/wallp-plasma-daemon"; else DAEMON_EXEC="/usr/bin/wallp-plasma-daemon"; fi
-    DAEMON_DESC="wallp-plasma — daemon de wallpaper (agenda + com.wallp.wallpaper)"
+    if [ "$CHECK" != 1 ]; then ln -sf "$PLASMA_ROOT/bin/wallpha-plasma-daemon" "$HOME/.local/bin/wallpha-plasma-daemon" 2>/dev/null || true; fi
+elif [ -x "$HOME/.local/bin/wallpha-plasma-daemon" ]; then
+    DAEMON_EXEC="$HOME/.local/bin/wallpha-plasma-daemon"
+    DAEMON_DESC="wallpha-plasma — daemon de wallpaper (agenda + com.wallpha.wallpaper)"
+elif [ -x "/usr/local/bin/wallpha-plasma-daemon" ] || [ -x "/usr/bin/wallpha-plasma-daemon" ]; then
+    if [ -x "/usr/local/bin/wallpha-plasma-daemon" ]; then DAEMON_EXEC="/usr/local/bin/wallpha-plasma-daemon"; else DAEMON_EXEC="/usr/bin/wallpha-plasma-daemon"; fi
+    DAEMON_DESC="wallpha-plasma — daemon de wallpaper (agenda + com.wallpha.wallpaper)"
 else
-    DAEMON_EXEC="/usr/bin/python3 $PROJ_ROOT/bin/wallp -d"
-    DAEMON_DESC="wallp - modo automático de wallpaper (legado, prefira wallp-plasma)"
+    DAEMON_EXEC="/usr/bin/python3 $PROJ_ROOT/bin/wallpha -d"
+    DAEMON_DESC="wallpha - modo automático de wallpaper (legado, prefira wallpha-plasma)"
 fi
 if [ "$CHECK" != 1 ]; then
     cat > "$UNIT_DIR/$UNIT" <<EOF
@@ -399,8 +450,8 @@ if [ "$CHECK" != 1 ]; then
     systemctl --user daemon-reload >/dev/null 2>&1 || true
     systemctl --user enable "$UNIT" >/dev/null 2>&1 || true
     ok "daemon habilitado (inicia com o computador) via ${DAEMON_EXEC}"
-    if [[ "$DAEMON_EXEC" == *"wallp-plasma"* ]] && [ -x "$PLASMA_ROOT/install.sh" ]; then
-        # delega instalação completa do daemon ao wallp-plasma (plasmóide já instalado acima)
+    if [[ "$DAEMON_EXEC" == *"wallpha-plasma"* ]] && [ -x "$PLASMA_ROOT/install.sh" ]; then
+        # delega instalação completa do daemon ao wallpha-plasma (plasmóide já instalado acima)
         bash "$PLASMA_ROOT/install.sh" -y >/dev/null 2>&1 || true
     fi
 fi
@@ -426,14 +477,14 @@ fi
 echo "=================================================="
 echo
 echo "Comandos:"
-echo "  wallp -c [caminho|nome]   troca o wallpaper"
-echo "  wallp -n                  próximo wallpaper do yml"
-echo "  wallp -r [dir] -t tempo   modo aleatório (slideshow embaralhado)"
+echo "  wallpha -c [caminho|nome]   troca o wallpaper"
+echo "  wallpha -n                  próximo wallpaper do yml"
+echo "  wallpha -r [dir] -t tempo   modo aleatório (slideshow embaralhado)"
 echo "                              -i = só imagens | -v = só vídeos"
 echo "                              -m tempo máx (padrão 1h) | -q N | -l true (loop)"
 echo "                              -rep = vídeos repetem a reprodução"
 echo "                              -int = vídeo toca inteiro; com -t, se terminar antes fica no último frame"
 echo "                              -s on|off = som do vídeo (padrão mudo)"
-echo "  wallp -a                  ativa o modo automático"
-echo "  wallp -x                  desativa o modo automático/aleatório"
+echo "  wallpha -a                  ativa o modo automático"
+echo "  wallpha -x                  desativa o modo automático/aleatório"
 exit 0

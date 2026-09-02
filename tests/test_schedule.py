@@ -2,7 +2,7 @@ from datetime import datetime, time, timedelta
 
 import pytest
 
-from wallp import config
+from wallpha import config
 
 
 def t(h, m=0):

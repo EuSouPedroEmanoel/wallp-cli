@@ -2,7 +2,7 @@ from datetime import datetime, time, timedelta
 
 import pytest
 
-from wallp import config
+from wallpha import config
 
 
 def t(h, m=0):
@@ -195,8 +195,8 @@ def test_format_entry_lista(tmp_path):
 # ---------------------------------------------------------------- -c <lista> / -a <nome>
 
 def test_start_list_cfg(tmp_path, monkeypatch):
-    import wallp
-    from wallp import state as st
+    import wallpha
+    from wallpha import state as st
 
     a = mk(tmp_path, "a.mp4", "b.mp4")
     config.load_entries([{"nome": "exemplo", "list": [
@@ -204,35 +204,35 @@ def test_start_list_cfg(tmp_path, monkeypatch):
         {"nome": "b", "local": str(tmp_path / "b.mp4"), "tempo": "30m"},
     ]}])
     lista = config.find_list("exemplo")
-    monkeypatch.setattr(wallp, "_start_service", lambda: None)
+    monkeypatch.setattr(wallpha, "_start_service", lambda: None)
     calls = {}
     monkeypatch.setattr(st, "set_list", lambda c: calls.update(cfg=c))
     monkeypatch.setattr(st, "set_on", lambda v: calls.update(on=v))
     monkeypatch.setattr(st, "clear_pos", lambda: None)
     monkeypatch.setattr(st, "clear_random", lambda: None)
 
-    wallp._start_list(lista, {"loop": "true"})
+    wallpha._start_list(lista, {"loop": "true"})
     assert calls["cfg"]["nome"] == "exemplo"
     assert calls["cfg"]["loop"] is True
     assert calls["cfg"]["slideshow"] is False
     assert calls["on"] is True
 
-    wallp._start_list(lista, {"tempo": "10m", "images": True})
+    wallpha._start_list(lista, {"tempo": "10m", "images": True})
     assert calls["cfg"]["slideshow"] is True
     assert calls["cfg"]["tipo"] == "imagem"
     assert calls["cfg"]["tempo"] == 600
 
 
 def test_list_next_ciclo(tmp_path, monkeypatch):
-    import wallp
-    from wallp import state as st
+    import wallpha
+    from wallpha import state as st
 
     a = mk(tmp_path, "a.mp4", "b.mp4")
     es = config.load_entries([{"nome": "ciclo", "tempo": "2h", "list": [
         {"nome": "a", "local": str(tmp_path / "a.mp4"), "tempo": "30m"},
         {"nome": "b", "local": str(tmp_path / "b.mp4"), "tempo": "30m"},
     ]}])
-    import wallp.entries as _entries
+    import wallpha.entries as _entries
     monkeypatch.setattr(_entries, "load", lambda *a, **kw: es)
     monkeypatch.setattr(config, "load", lambda *a, **kw: es)
     kept = {"cfg": {"nome": "ciclo", "tempo": None, "max": None, "qtd": None, "loop": False,
@@ -242,34 +242,34 @@ def test_list_next_ciclo(tmp_path, monkeypatch):
     monkeypatch.setattr(st, "set_list", lambda c: kept.update(cfg=c))
     monkeypatch.setattr(st, "clear_list", lambda: kept.update(cfg=None))
     applied = []
-    monkeypatch.setattr(wallp.apply, "apply", lambda path, **kw: (applied.append(str(path)), ("p", path))[1])
+    monkeypatch.setattr(wallpha.apply, "apply", lambda path, **kw: (applied.append(str(path)), ("p", path))[1])
 
-    wallp._list_next()
+    wallpha._list_next()
     assert applied[0].endswith("a.mp4") and kept["cfg"]["idx"] == 1
-    wallp._list_next()
+    wallpha._list_next()
     assert applied[1].endswith("b.mp4")
-    wallp._list_next()
+    wallpha._list_next()
     assert len(applied) == 2
 
 
 def test_auto_mode_single_item(tmp_path, monkeypatch):
-    import wallp
-    from wallp import state as st
+    import wallpha
+    from wallpha import state as st
 
     a = mk(tmp_path, "a.mp4")
     es = config.load_entries([{"nome": "sozinho", "local": str(tmp_path / "a.mp4"), "tempo": "30m"},
                               {"nome": "d", "local": "/tmp/d.mp4", "default": True}])
-    import wallp.entries as _entries2
+    import wallpha.entries as _entries2
     monkeypatch.setattr(_entries2, "load", lambda *a, **kw: es)
     monkeypatch.setattr(config, "load", lambda *a, **kw: es)
-    monkeypatch.setattr(wallp, "_start_service", lambda: None)
+    monkeypatch.setattr(wallpha, "_start_service", lambda: None)
     calls = {}
     monkeypatch.setattr(st, "set_list", lambda c: calls.update(cfg=c))
     monkeypatch.setattr(st, "set_on", lambda v: calls.update(on=v))
     monkeypatch.setattr(st, "clear_pos", lambda: None)
     monkeypatch.setattr(st, "clear_random", lambda: None)
 
-    wallp._auto_mode({"target": "sozinho"})
+    wallpha._auto_mode({"target": "sozinho"})
     assert calls["cfg"]["nome"] == "sozinho"
     assert calls["cfg"]["persist"] is True
     assert calls["on"] is True

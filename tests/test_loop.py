@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from wallp import config
+from wallpha import config
 
 
 def t(h, m=0):
@@ -61,7 +61,7 @@ def test_video_loop_true_slot_vai_ate_o_proximo():
 
 
 def test_daemon_aplica_playback_loop_no_video(monkeypatch):
-    from wallp import daemon, state
+    from wallpha import daemon, state
 
     es = config.load_entries([{"nome": "v", "local": "/tmp/v.mp4", "loop": True},
                               {"nome": "d", "local": "/tmp/d.mp4", "default": True}])
@@ -69,12 +69,12 @@ def test_daemon_aplica_playback_loop_no_video(monkeypatch):
     monkeypatch.setattr(state, "get_random", lambda: None)
     monkeypatch.setattr(state, "get_list", lambda: None)
     monkeypatch.setattr(config, "load_checked", lambda: es)
-    import wallp.entries as _e
+    import wallpha.entries as _e
     monkeypatch.setattr(_e, "load_checked", lambda *a, **kw: es)
-    import wallp.daemon_schedule as _ds
+    import wallpha.daemon_schedule as _ds
     monkeypatch.setattr(_ds.entries, "load_checked", lambda *a, **kw: es)
     monkeypatch.setattr(config, "next_transition", lambda entries, now: now.replace(hour=23))
-    import wallp.transitions as _tr
+    import wallpha.transitions as _tr
     monkeypatch.setattr(_tr, "next_transition", lambda entries, now: now.replace(hour=23))
     monkeypatch.setattr(_ds.transitions, "next_transition", lambda entries, now: now.replace(hour=23))
     got = {}
@@ -171,7 +171,7 @@ def test_lista_loop_2_rot_duration_finita(tmp_path):
 
 
 def test_daemon_list_cycle_2_passadas(tmp_path, monkeypatch, capsys):
-    from wallp import daemon, state
+    from wallpha import daemon, state
 
     mk(tmp_path, "a.mp4", "b.mp4")
     es = config.load_entries([{"nome": "ciclo", "tempo": "1h", "loop": 2, "list": [
@@ -187,9 +187,9 @@ def test_daemon_list_cycle_2_passadas(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(state, "set_list", lambda c: kept.update(cfg=c))
     monkeypatch.setattr(state, "clear_list", lambda: kept.update(cfg=None))
     monkeypatch.setattr(daemon.config, "load_checked", lambda: es)
-    import wallp.entries as _e2
+    import wallpha.entries as _e2
     monkeypatch.setattr(_e2, "load_checked", lambda *a, **kw: es)
-    import wallp.daemon_list as _dl
+    import wallpha.daemon_list as _dl
     monkeypatch.setattr(_dl.entries, "load_checked", lambda *a, **kw: es)
     applied = []
     monkeypatch.setattr(daemon.apply, "apply",
@@ -199,7 +199,7 @@ def test_daemon_list_cycle_2_passadas(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(daemon.time, "sleep", lambda s: clock.update(now=clock["now"] + s))
 
     # compat: daemon now exposes _run_list_cycle via daemon_list
-    import wallp.daemon_list as _dl2
+    import wallpha.daemon_list as _dl2
     daemon._run_list_cycle = _dl2._run_list_cycle
     daemon._run_list_cycle(config.find_list("ciclo")["sub_entries"], kept["cfg"])
     # 2 passadas x 2 sub-itens
@@ -211,7 +211,7 @@ def test_daemon_list_cycle_2_passadas(tmp_path, monkeypatch, capsys):
 # ---------------------------------------------------------------- slideshow -l 2
 
 def test_daemon_list_slideshow_l_2_passadas(tmp_path, monkeypatch, capsys):
-    from wallp import daemon, state
+    from wallpha import daemon, state
 
     mk(tmp_path, "x.mp4", "y.mp4")
     es = config.load_entries([{"nome": "slide", "default": True, "list": [
@@ -231,11 +231,11 @@ def test_daemon_list_slideshow_l_2_passadas(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(state, "set_pos", lambda p: kept.update(pos=p))
     monkeypatch.setattr(daemon.config, "load_checked", lambda: es)
     monkeypatch.setattr(daemon.config, "get_salt", lambda: "salt-teste")
-    import wallp.entries as _e3
+    import wallpha.entries as _e3
     monkeypatch.setattr(_e3, "load_checked", lambda *a, **kw: es)
-    import wallp.media as _m3
+    import wallpha.media as _m3
     monkeypatch.setattr(_m3, "get_salt", lambda: "salt-teste")
-    import wallp.daemon_list as _dl3
+    import wallpha.daemon_list as _dl3
     monkeypatch.setattr(_dl3.entries, "load_checked", lambda *a, **kw: es)
     monkeypatch.setattr(_dl3.media, "get_salt", lambda: "salt-teste")
     applied = []
@@ -247,7 +247,7 @@ def test_daemon_list_slideshow_l_2_passadas(tmp_path, monkeypatch, capsys):
 
     lista = config.find_list("slide")
     # compat
-    import wallp.daemon_list as _dl4
+    import wallpha.daemon_list as _dl4
     daemon._run_list_slideshow = _dl4._run_list_slideshow
     daemon._run_list_slideshow(cfg, lista)
     # 2 passadas x 2 arquivos
@@ -256,8 +256,8 @@ def test_daemon_list_slideshow_l_2_passadas(tmp_path, monkeypatch, capsys):
 
 
 def test_start_list_l_2_cfg_int(tmp_path, monkeypatch):
-    import wallp
-    from wallp import state as st
+    import wallpha
+    from wallpha import state as st
 
     mk(tmp_path, "a.mp4", "b.mp4")
     config.load_entries([{"nome": "exemplo", "list": [
@@ -265,14 +265,14 @@ def test_start_list_l_2_cfg_int(tmp_path, monkeypatch):
         {"nome": "b", "local": str(tmp_path / "b.mp4"), "tempo": "30m"},
     ]}])
     lista = config.find_list("exemplo")
-    monkeypatch.setattr(wallp, "_start_service", lambda: None)
+    monkeypatch.setattr(wallpha, "_start_service", lambda: None)
     calls = {}
     monkeypatch.setattr(st, "set_list", lambda c: calls.update(cfg=c))
     monkeypatch.setattr(st, "set_on", lambda v: calls.update(on=v))
     monkeypatch.setattr(st, "clear_pos", lambda: None)
     monkeypatch.setattr(st, "clear_random", lambda: None)
 
-    wallp._start_list(lista, {"loop": "2"})
+    wallpha._start_list(lista, {"loop": "2"})
     assert calls["cfg"]["loop"] == 2
     assert isinstance(calls["cfg"]["loop"], int)
 

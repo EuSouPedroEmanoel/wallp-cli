@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-import wallp.yt as yt
-from wallp import state
-import wallp
+import wallpha.yt as yt
+from wallpha import state
+import wallpha
 
 
 def make_file(path, size, mtime=None):
@@ -26,7 +26,7 @@ def test_clean_yt_buffer_mantem_keep_e_recentes(tmp_path, monkeypatch):
     # fake yt_dir
     monkeypatch.setattr(yt, "yt_dir", lambda: tmp_path)
     # usa limite pequeno 1 MB para testar com arquivos pequenos
-    monkeypatch.setenv("WALLP_YT_CACHE_MB", "1")
+    monkeypatch.setenv("WALLPHA_YT_CACHE_MB", "1")
     # limpa
     # cria 3 arquivos: antigo 600KB, medio 600KB, novo 600KB (total 1.8MB >1MB)
     # keep = novo, deve manter novo (600KB) + um dos recentes que ainda cabe (600KB) = 1.2MB mas over? Actually limit 1MB, keep entra sempre (600KB), sobra 400KB, nenhum outro cabe (600KB>400KB) então só keep fica
@@ -53,7 +53,7 @@ def test_clean_yt_buffer_mantem_keep_e_recentes(tmp_path, monkeypatch):
 
 def test_clean_yt_buffer_lru_sem_keep_esvazia(tmp_path, monkeypatch):
     monkeypatch.setattr(yt, "yt_dir", lambda: tmp_path)
-    monkeypatch.setenv("WALLP_YT_CACHE_MB", "500")
+    monkeypatch.setenv("WALLPHA_YT_CACHE_MB", "500")
     f1 = make_file(tmp_path / "a.mp4", 1024)
     f2 = make_file(tmp_path / "b.mp4", 1024)
     assert f1.exists() and f2.exists()
@@ -65,7 +65,7 @@ def test_clean_yt_buffer_lru_sem_keep_esvazia(tmp_path, monkeypatch):
 
 def test_clean_yt_buffer_keep_dir_mantem_tudo(tmp_path, monkeypatch):
     monkeypatch.setattr(yt, "yt_dir", lambda: tmp_path)
-    monkeypatch.setenv("WALLP_YT_CACHE_MB", "1")
+    monkeypatch.setenv("WALLPHA_YT_CACHE_MB", "1")
     # cria pasta keep com 2 arquivos 400KB cada
     keep_dir = tmp_path / "keepdir"
     keep_dir.mkdir()
@@ -82,7 +82,7 @@ def test_clean_yt_buffer_keep_dir_mantem_tudo(tmp_path, monkeypatch):
 def test_download_yt_chama_clean_com_keep(monkeypatch, tmp_path):
     # fake yt_dir
     monkeypatch.setattr(yt, "yt_dir", lambda: tmp_path)
-    monkeypatch.setenv("WALLP_YT_CACHE_MB", "1")
+    monkeypatch.setenv("WALLPHA_YT_CACHE_MB", "1")
     # cria arquivos antigos que devem ser limpos após download
     old = make_file(tmp_path / "old.mp4", 800 * 1024, time.time() - 300)
     # fake subprocess.run para yt-dlp
@@ -133,16 +133,16 @@ def test_x_cache_limpa_sem_parar_daemon(tmp_path, monkeypatch):
     monkeypatch.setattr(state, "set_on", lambda v: calls.setdefault("set_on", []).append(v))
     monkeypatch.setattr(state, "clear_random", lambda: calls.setdefault("clear_random", []).append(1))
     monkeypatch.setattr(state, "clear_list", lambda: calls.setdefault("clear_list", []).append(1))
-    monkeypatch.setattr("wallp.service._stop_service", lambda: calls.setdefault("stop", []).append(1))
-    # também precisa mock wallp.__init__._stop_service? Na main importamos from .service import _stop_service
-    # O main usa _stop_service do service, então patch wallp.service._stop_service deve cobrir
+    monkeypatch.setattr("wallpha.service._stop_service", lambda: calls.setdefault("stop", []).append(1))
+    # também precisa mock wallpha.__init__._stop_service? Na main importamos from .service import _stop_service
+    # O main usa _stop_service do service, então patch wallpha.service._stop_service deve cobrir
     # Simula argv
-    monkeypatch.setattr(sys, "argv", ["wallp", "-x", "cache"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-x", "cache"])
     # captura info
-    import wallp.log as log
+    import wallpha.log as log
     msgs = []
     monkeypatch.setattr(log, "info", lambda m: msgs.append(m))
-    wallp.main()
+    wallpha.main()
     # buffer vazio
     assert not f1.exists() and not f2.exists()
     # estado intacto: não chamou set_on/clear etc.
@@ -160,18 +160,18 @@ def test_x_para_e_esvazia(tmp_path, monkeypatch):
     monkeypatch.setattr(state, "set_on", lambda v: calls.__setitem__("set_on", v))
     monkeypatch.setattr(state, "clear_random", lambda: calls.__setitem__("clear_random", True))
     monkeypatch.setattr(state, "clear_list", lambda: calls.__setitem__("clear_list", True))
-    monkeypatch.setattr("wallp.service._stop_service", lambda: calls.__setitem__("stop", True))
+    monkeypatch.setattr("wallpha.service._stop_service", lambda: calls.__setitem__("stop", True))
     # também patch yt.clean_yt_buffer para verificar chamada, mas vamos deixar real e verificar arquivo apagado
-    # patch o _stop_service importado em wallp.__init__
-    import wallp.service as svc
+    # patch o _stop_service importado em wallpha.__init__
+    import wallpha.service as svc
     monkeypatch.setattr(svc, "_stop_service", lambda: calls.__setitem__("stop", True))
-    import wallp as w
+    import wallpha as w
     monkeypatch.setattr(w, "_stop_service", lambda: calls.__setitem__("stop", True))
-    monkeypatch.setattr(sys, "argv", ["wallp", "-x"])
-    import wallp.log as log
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-x"])
+    import wallpha.log as log
     msgs = []
     monkeypatch.setattr(log, "info", lambda m: msgs.append(m))
-    wallp.main()
+    wallpha.main()
     assert calls.get("set_on") is False
     assert calls.get("clear_random") is True
     assert calls.get("clear_list") is True
@@ -181,9 +181,9 @@ def test_x_para_e_esvazia(tmp_path, monkeypatch):
 
 
 def test_x_invalido_erro(monkeypatch, capsys):
-    monkeypatch.setattr(sys, "argv", ["wallp", "-x", "foo"])
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-x", "foo"])
     with pytest.raises(SystemExit) as ex:
-        wallp.main()
+        wallpha.main()
     assert ex.value.code == 1
     # mensagem de erro deve ser "só 'cache' é aceito com -x"
     err = capsys.readouterr().err
