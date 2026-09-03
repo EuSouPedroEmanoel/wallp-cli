@@ -88,6 +88,27 @@ def test_hora_range_slot():
     assert config.resolve_active(es, t(10))["nome"] == "d"
 
 
+def test_next_entry_hora_segue_proximo_slot():
+    es = make([
+        {"nome": "manha", "local": "/tmp/m.mp4", "hora": "8h-10h"},
+        {"nome": "tarde", "local": "/tmp/t.mp4", "hora": "10h-12h"},
+        {"nome": "d", "local": "/tmp/d.mp4", "default": True},
+    ])
+    active = config.resolve_active(es, t(9))
+    assert active["nome"] == "manha"
+    assert config.next_entry(es, active, t(9))["nome"] == "tarde"
+
+
+def test_next_entry_hora_sem_slot_futuro_volta_rotacao():
+    es = make([
+        {"nome": "rot", "local": "/tmp/r.mp4", "tempo": "1h"},
+        {"nome": "manha", "local": "/tmp/m.mp4", "hora": "8h-10h"},
+        {"nome": "d", "local": "/tmp/d.mp4", "default": True},
+    ])
+    active = config.resolve_active(es, t(9))
+    assert config.next_entry(es, active, t(9))["nome"] == "rot"
+
+
 def test_hora_inicio_tempo_define_fim():
     es = make([{"nome": "a", "local": "/tmp/a.mp4", "hora": "8h", "tempo": "2h"},
                {"nome": "d", "local": "/tmp/d.mp4", "default": True}])

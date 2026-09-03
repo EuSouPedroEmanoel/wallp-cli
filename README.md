@@ -20,7 +20,7 @@ CLI para trocar o wallpaper (animado ou imagem) do **KDE Plasma** usando o plasm
 | Método | Comando |
 |---|---|
 | **curl** (recomendado) | `curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh \| bash` <br> `curl -fsSL .../quick-install.sh \| bash -s -- -y` (sem perguntar) |
-| **ZIP / TAR.GZ** | [wallpha-cli-1.0.3.zip](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-1.0.3.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-1.0.3.tar.gz) → `unzip ... && cd wallpha-cli-* && ./install.sh -y` <br> **bin mínimo:** [wallpha-cli-bin-1.0.3.zip](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-bin-1.0.3.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-bin-1.0.3.tar.gz) (`--bin`, sem capa, `~/Imagens`) |
+| **ZIP / TAR.GZ** | [wallpha-cli-2.1.0.zip](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-2.1.0.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-2.1.0.tar.gz) → `unzip ... && cd wallpha-cli-* && ./install.sh -y` <br> **bin mínimo:** [wallpha-cli-bin-2.1.0.zip](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-bin-2.1.0.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-bin-2.1.0.tar.gz) (`--bin`, sem capa, `~/Imagens`) |
 | **git clone** | `git clone https://github.com/EuSouPedroEmanoel/wallpha-cli.git ~/dev/wallpha/wallpha-cli && ~/dev/wallpha/wallpha-cli/install.sh -y` |
 
 > `quick-install.sh` baixa o tarball da última release por padrão (sem `git`/`jq`). `install.sh` cuida de `python-dbus`, `python-yaml`, `qt6-multimedia-ffmpeg`, plasmoid e daemon.
@@ -221,48 +221,18 @@ wallpha --init                   # cria um wallpha.yml de exemplo
   limpa a config random/lista e **para o daemon na hora** (a unit continua habilitada) e **esvazia o buffer do YouTube**.
 - **Buffer do YouTube** (`-y`/`-yl`): fica em `tmpfs` em `/run/user/<uid>/wallpha` (RAM, limpo no logout), com **limite de 500 MiB** (`YT_CACHE_MB`, override por env `WALLPHA_YT_CACHE_MB`). Após cada `download_yt()` bem-sucedido, limpeza **LRU por mtime**: mantém o arquivo recém-baixado (`keep`) e os mais recentes que caibam no orçamento; apaga o resto. Falha de download não limpa. `wallpha -x cache` limpa só o buffer (sem tocar no daemon/estado); `wallpha -x <outra-coisa>` erro.
 - O daemon roda destacado do terminal — **Ctrl+C não o fecha**; pare com `wallpha -x`.
-
-## Pendente conhecido: `-n` depois de `-a`
-
-Bug relatado: após `wallpha -a` (agenda), `wallpha -n` não avança para o próximo wallpaper
-da fila nem pula de forma útil o wallpaper de horário — costuma cair no item de
-rotação/default em vez do próximo slot.
-
-Causa raiz (diagnóstico, sem correção ainda):
-
-1. O daemon nunca grava `state.set_last`: `_run_schedule` (`daemon.py:395`) mantém a
-   posição só em memória (`last_applied`). Em `-n`, `_change_yml_next`
-   (`__init__.py:657`) não encontra o último aplicado e cai no fallback por relógio
-   (`resolve_active` + `next_entry`, `__init__.py:693-695`).
-2. Itens com `hora` ficam fora da ordem de avanço: `_rotation` (`config.py:726`)
-   exclui quem tem `hora_start` e `_cycle_order` (`config.py:748`) é só
-   rotação + defaults. `next_entry` (`config.py:1073`) procura o ativo por
-   `(local, nome)` (`config.py:1092`); não achando (item de hora), retorna
-   `rot[0]` (`config.py:1094`) — salta para o primeiro da rotação/default em vez do
-   próximo slot de hora.
-3. O avanço do `-n` não é adotado pela agenda: ele aplica direto e grava `set_last`
-   (`__init__.py:710-712`), mas o daemon decide só por `resolve_active` (relógio);
-   o wallpaper do `-n` vale até a próxima transição natural (o daemon não re-aplica
-   o mesmo item porque a chave local dele já bate, mas também não incorpora a escolha).
-4. Modo lista (`-a <lista>`): `_list_next` (`__init__.py:508`) aplica o próximo
-   sub-item e incrementa `idx` no estado; `_run_list_cycle` (`daemon.py:183`) relê o
-   cfg a cada volta (`daemon.py:192`) e respeita o novo idx — porém ao acordar troca
-   imediatamente, cortando o tempo restante do sub atual. No modo mini-agenda
-   (`_run_list_schedule`), vale o problema 2.
-
-Comportamento esperado: `-n` após `-a` deve ir ao próximo wallpaper da agenda
-(próximo slot de hora / próximo item da fila / próximo sub-item da lista), com o
-avanço respeitado pelo daemon até a fronteira seguinte.
-
-Mudanças necessárias (pendente):
-
-- Persistir a posição de forma que o daemon respeite (ex.: `_run_schedule` gravar
-  `set_last`, ou um override com validade até a próxima transição).
-- `next_entry`: quando o ativo tem `hora`, avançar para o próximo slot
-  (via `_hora_slots`/`next_transition`) em vez de cair em `rot[0]`.
-- Definir no modo lista se o `-n` corta o tempo do sub atual ou só enfileira o próximo.
+- Em `wallpha -a`, `wallpha -n` aplica o próximo wallpaper imediatamente e o mantém até a
+  próxima transição natural da agenda. Itens com `hora` avançam ao próximo slot; em uma lista
+  persistente, o avanço é imediato mas o relógio do ciclo atual não é reiniciado.
 
 ## Desenvolvimento
+
+## Publicação
+
+Uma tag `vX.Y.Z` aciona o workflow de release: ele valida a versão, executa os testes e publica
+os quatro artefatos (`wallpha-cli` e `wallpha-cli-bin`, em `.tar.gz` e `.zip`). Para uma release
+conjunta, publique primeiro a tag da CLI e, depois que ela estiver disponível no GitHub, publique
+a mesma tag no repositório `wallpha-plasma`.
 
 ```sh
 python3 -m venv .venv

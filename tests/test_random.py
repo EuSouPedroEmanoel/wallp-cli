@@ -242,6 +242,17 @@ def test_state_last(tmp_path, monkeypatch):
     assert state.get_last() == ["/tmp/a.mp4", "a"]
 
 
+def test_state_override(tmp_path, monkeypatch):
+    monkeypatch.setattr(state, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(state, "OVERRIDE_FILE", tmp_path / "override")
+    assert state.get_override() is None
+    cfg = {"key": ["/tmp/a.mp4", "a", "/tmp/a.mp4"], "until": "2026-08-18T10:00:00"}
+    state.set_override(cfg)
+    assert state.get_override() == cfg
+    state.clear_override()
+    assert state.get_override() is None
+
+
 def test_state_pos(tmp_path, monkeypatch):
     monkeypatch.setattr(state, "STATE_DIR", tmp_path)
     monkeypatch.setattr(state, "POS_FILE", tmp_path / "pos")
