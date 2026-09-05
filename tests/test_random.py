@@ -179,6 +179,30 @@ def test_parse_valores_sem_r_erro(monkeypatch):
         cli.parse()
 
 
+def test_parse_c_play_pause_sem_alvo(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "-p"])
+    o = cli.parse()
+    assert o["change"] and o["target"] is None and o["play_pause"] is True
+
+
+def test_parse_play_pause_com_alvo_erro(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "video.mp4", "-p"])
+    with pytest.raises(SystemExit):
+        cli.parse()
+
+
+def test_parse_play_pause_com_ajuste_erro(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "-p", "-s", "on"])
+    with pytest.raises(SystemExit):
+        cli.parse()
+
+
+def test_parse_c_loop_sem_valor_alterna(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "-l"])
+    o = cli.parse()
+    assert o["change"] and o["loop"] == "__toggle__"
+
+
 def test_parse_c_aceita_valores(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["wallpha", "-c", "lista", "-t", "30m", "-q", "3"])
     o = cli.parse()

@@ -7,7 +7,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --version 1.0.0
 #   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --version 1.0.0 --git
 #   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --bin
-#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --bin --version 2.1.0
+#   curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh | bash -s -- --bin --version 2.2.0
 #   WALLPHA_VERSION=1.0.0 bash quick-install.sh -y
 #   WALLPHA_VERSION=v1.0.0 bash quick-install.sh --git -y
 #   bash <(curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh) --check

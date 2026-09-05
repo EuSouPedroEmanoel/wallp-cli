@@ -2,6 +2,8 @@
 
 > **Nota de rename (v2.0.0):** Este projeto se chamava `wallp`. Renomeamos para `wallpha` porque já existem outros CLIs de wallpaper com o mesmo nome e não queríamos causar confusão. `wallp` continua funcionando como symlink temporário até a v3.0.0 — migre para `wallpha`. URLs antigas do GitHub redirecionam automaticamente.
 
+> **Nota de desculpas (v2.2.0):** Pedimos desculpas: as versões anteriores ainda não eram compatíveis de forma confiável com vídeos no motor nativo. Esta versão corrige a reprodução de vídeos, elimina a tela preta após trocas de mídia, mantém o último frame durante a pausa e estabiliza loop, áudio e retomada da agenda.
+
 > ⚠️ **Aviso:** O motor legacy `org.kde.image` para imagens será **removido na v3.0**. A partir daí apenas `com.wallpha.wallpaper` será suportado (instale via `./install.sh -y`).
 
 > 🖥️ **Em breve:** `wallpha-gui` chega em **20/10/2026** — interface gráfica para `wallpha.yml` (preview, edição de `hora`/`tempo`/`dia`/`loop` e controles `-a/-r/-x`). Acompanhe em [`wallpha-gui`](../wallpha-gui).
@@ -20,7 +22,7 @@ CLI para trocar o wallpaper (animado ou imagem) do **KDE Plasma** usando o plasm
 | Método | Comando |
 |---|---|
 | **curl** (recomendado) | `curl -fsSL https://raw.githubusercontent.com/EuSouPedroEmanoel/wallpha-cli/master/quick-install.sh \| bash` <br> `curl -fsSL .../quick-install.sh \| bash -s -- -y` (sem perguntar) |
-| **ZIP / TAR.GZ** | [wallpha-cli-2.1.0.zip](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-2.1.0.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-2.1.0.tar.gz) → `unzip ... && cd wallpha-cli-* && ./install.sh -y` <br> **bin mínimo:** [wallpha-cli-bin-2.1.0.zip](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-bin-2.1.0.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-bin-2.1.0.tar.gz) (`--bin`, sem capa, `~/Imagens`) |
+| **ZIP / TAR.GZ** | [wallpha-cli-2.2.0.zip](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-2.2.0.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-2.2.0.tar.gz) → `unzip ... && cd wallpha-cli-* && ./install.sh -y` <br> **bin mínimo:** [wallpha-cli-bin-2.2.0.zip](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-bin-2.2.0.zip) / [tar.gz](https://github.com/EuSouPedroEmanoel/wallpha-cli/releases/latest/download/wallpha-cli-bin-2.2.0.tar.gz) (`--bin`, sem capa, `~/Imagens`) |
 | **git clone** | `git clone https://github.com/EuSouPedroEmanoel/wallpha-cli.git ~/dev/wallpha/wallpha-cli && ~/dev/wallpha/wallpha-cli/install.sh -y` |
 
 > `quick-install.sh` baixa o tarball da última release por padrão (sem `git`/`jq`). `install.sh` cuida de `python-dbus`, `python-yaml`, `qt6-multimedia-ffmpeg`, plasmoid e daemon.

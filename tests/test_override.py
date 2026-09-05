@@ -54,3 +54,13 @@ def test_expired_or_invalid_override_is_removed(tmp_path, monkeypatch):
     state.set_override({"key": ["/tmp/removido.mp4", "removido", "/tmp/removido.mp4"], "until": (now + timedelta(minutes=1)).isoformat()})
     assert daemon_schedule._override_active(entries, now) == (None, None)
     assert state.get_override() is None
+
+
+def test_manual_path_override_is_resolved(tmp_path, monkeypatch):
+    _state_tmp(tmp_path, monkeypatch)
+    now = datetime(2026, 8, 18, 9, 0)
+    state.set_override({"path": "/tmp/manual vídeo.mp4", "until": (now + timedelta(minutes=10)).isoformat()})
+    active, until = daemon_schedule._override_active(_entries(), now)
+    assert active["nome"] == "manual"
+    assert active["arquivo"] == "/tmp/manual vídeo.mp4"
+    assert until == now + timedelta(minutes=10)
